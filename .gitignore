@@ -1,0 +1,21 @@
+﻿# Sistema operacional
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporários e logs
+*.log
+*.tmp
+*.temp
+
+# Estado local do Specify
+.specify/feature.json
+.specify/integrations/extensions/*/local-config.yml
+.specify/integrations/packages/
+.specify/integrations/packages.json
