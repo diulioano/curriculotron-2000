@@ -53,3 +53,11 @@ Browser2/2 PASS em360/1280: Hoje/listas, ordem/subconjunto, reload, descarte/res
 
 T010/T011 executados com sucesso. Home e Opportunities inspecionados: consomem o mesmo OpportunityCard; detalhe usa o mesmo companyColor. Nenhuma divergência demonstrada que exija código adicional. Sem Effects, cache paralelo ou persistência de cor. Revisão T012 APPROVED por qa; integração e comparação de produção contra base conferidas.
 
+## T013 — consolidação local
+
+Resultados finais: npm run test:frontend 38/38 (360/1280); npm test58/58; lint/build PASS; Prettier de todos os seis arquivos frontend tocados PASS. format:check global continua falhando somente nos oito arquivos preexistentes listados em T002. Nenhuma validação backend foi executada (sem alteração pertinente).
+
+Cobertura medida com @vitest/coverage-v8 5.1.0, versão conferida no registro npm e uso conforme https://vitest.dev/guide/coverage.html . Instalação temporária no node_modules (`npm install --no-save --package-lock=false --ignore-scripts`), sem mudar manifest/lock, seguida de npm ci --ignore-scripts para restaurar exatamente o lockfile. Relatório V8 dos dois arquivos de produção tocados: 66,66% de linhas globais (32/48), não representa todo o frontend. Recorte por diff contra a base: 11/11 linhas executáveis adicionadas/alteradas com início de statement/branch cobertas, conforme coverage-changed-lines.json; ramo do rótulo na linha98 teve contagens9 e2. Não declarar gate de cobertura global ou CI ativo. Tentativa anterior com NODE_V8_COVERAGE bruto não capturou módulos transformados do Vitest e não foi usada como evidência.
+
+O resultado da implementação local atende aos cenários descritos; entrega completa de US permanece dependente dos gates Git de T014. Revisão consolidada T013 APPROVED por qa; revisor executou58 testes/lint/build/diff-check e conferiu recorte e escopo. Nenhum QA-declined: o único MINOR foi aceito e corrigido. Sem hooks after_implement (extensions.yml ausente).
+

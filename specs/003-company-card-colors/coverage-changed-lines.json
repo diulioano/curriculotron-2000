@@ -1,0 +1,68 @@
+{
+  "base": "775f7f33dffb29d9072a0d38213427a90c6a18d6",
+  "provider": "@vitest/coverage-v8 5.1.0",
+  "scope": "Changed executable statement/branch start lines only; not whole frontend coverage",
+  "covered": 11,
+  "total": 11,
+  "percent": 100,
+  "files": [
+    {
+      "file": "frontend/src/components/OpportunityCard.tsx",
+      "covered": 1,
+      "total": 1,
+      "lines": [
+        {
+          "line": 98,
+          "hits": 9
+        }
+      ]
+    },
+    {
+      "file": "frontend/src/lib/opportunity.ts",
+      "covered": 10,
+      "total": 10,
+      "lines": [
+        {
+          "line": 23,
+          "hits": 4
+        },
+        {
+          "line": 35,
+          "hits": 4
+        },
+        {
+          "line": 38,
+          "hits": 58
+        },
+        {
+          "line": 39,
+          "hits": 58
+        },
+        {
+          "line": 40,
+          "hits": 53
+        },
+        {
+          "line": 41,
+          "hits": 53
+        },
+        {
+          "line": 42,
+          "hits": 27
+        },
+        {
+          "line": 43,
+          "hits": 27
+        },
+        {
+          "line": 44,
+          "hits": 28303
+        },
+        {
+          "line": 46,
+          "hits": 27
+        }
+      ]
+    }
+  ]
+}

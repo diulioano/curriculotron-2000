@@ -65,7 +65,7 @@ Checks frontend após alterações de código: `npm test`, `npm run lint`, `npm 
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T013 Executar a matriz de `specs/003-company-card-colors/quickstart.md`, registrar comandos/resultados e cobertura realmente medida em `specs/003-company-card-colors/validation.md`, identificar configuração ausente sem declarar 80% atingido sem relatório, reconciliar documentação com o resultado final e obter revisão por agente de constituição/guia/contratos; revisar TypeScript, arquitetura e ausência de impacto Spring/JPA/SQLite; corrigir impeditivos e submeter as correções à nova revisão antes de concluir.
+- [X] T013 Executar a matriz de `specs/003-company-card-colors/quickstart.md`, registrar comandos/resultados e cobertura realmente medida em `specs/003-company-card-colors/validation.md`, identificar configuração ausente sem declarar 80% atingido sem relatório, reconciliar documentação com o resultado final e obter revisão por agente de constituição/guia/contratos; revisar TypeScript, arquitetura e ausência de impacto Spring/JPA/SQLite; corrigir impeditivos e submeter as correções à nova revisão antes de concluir.
 - [ ] T014 Conferir commits delimitados por tarefa e push da branch correspondente, abrir PR para main com spec, tarefas, validações e QA-declined, e conferir `.github/workflows/` quanto aos checks automatizados e revisão por agente exigidos; corrigir ou registrar explicitamente impedimentos reais, verificar execução no Git e registrar URL/estado em `specs/003-company-card-colors/validation.md`; não declarar gate ativo sem execução verificada nem encerrar com revisão/falha impeditiva pendente, e nunca fazer merge sem CI verde.
 
 ## Dependencies & Execution Order
@@ -95,6 +95,7 @@ Entregar primeiro o MVP funcional US1, com testes e revisão. Completar US3 ante
 Cobertura: FR-001/003/004/007 em T004–T006; FR-006 em T004/T007; FR-008/010 em T007–T009; FR-002/005 em T004/T010–T012; FR-009 em T005/T006/T011; SC-001 em T006, SC-002 em T011/T012, SC-003/004 em T008/T009. T013 consolida a evidência.
 
 `before_tasks`/`after_tasks`: `.specify/extensions.yml` ausente na geração, portanto sem hooks registrados a executar. Nenhuma tarefa de implementação foi executada por esta geração documental.
+
 
 
 
