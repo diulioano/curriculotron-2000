@@ -18,6 +18,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     defaults:
       run:
         working-directory: backend
@@ -35,9 +37,8 @@ jobs:
         run: ./gradlew spotlessCheck check
 
       - name: SonarQube Cloud analysis
-        if: ${{ secrets.SONAR_TOKEN != '' && vars.SONAR_ORGANIZATION != '' && vars.SONAR_PROJECT_KEY != '' }}
+        if: ${{ env.SONAR_TOKEN != '' && vars.SONAR_ORGANIZATION != '' && vars.SONAR_PROJECT_KEY != '' }}
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
         run: >-
