@@ -1,6 +1,7 @@
 package dev.curriculotron.sources;
 
 import dev.curriculotron.opportunities.domain.CanonicalUrl;
+import dev.curriculotron.opportunities.domain.VacancyEvidence.Completeness;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +71,9 @@ public class OracleRecruitingSource implements JobSource {
                 title + "\n" + description,
                 title,
                 location.isEmpty() ? null : String.join(" · ", location),
-                PublicationDates.parse(row.path("PostedDate").asText(""))));
+                PublicationDates.parse(row.path("PostedDate").asText("")),
+                Completeness.partial,
+                "listing_summary"));
       }
       return new SourceResult(
           items,

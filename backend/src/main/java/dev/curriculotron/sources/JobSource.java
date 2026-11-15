@@ -1,6 +1,8 @@
 package dev.curriculotron.sources;
 
+import dev.curriculotron.opportunities.domain.VacancyEvidence.Completeness;
 import java.util.List;
+import java.util.Objects;
 
 /** A source supplies evidence; extraction and ranking happen separately. */
 public interface JobSource {
@@ -17,7 +19,40 @@ public interface JobSource {
       String text,
       String title,
       String location,
-      java.time.LocalDate publishedAt) {
+      java.time.LocalDate publishedAt,
+      Completeness completeness,
+      String completenessReason) {
+    public Item {
+      Objects.requireNonNull(completeness);
+      if (text != null && text.length() > 100_000) {
+        int end = 100_000;
+        if (Character.isHighSurrogate(text.charAt(end - 1))) end--;
+        text = text.substring(0, end);
+        completeness = Completeness.partial;
+        completenessReason = "locally_truncated";
+      }
+    }
+
+    public Item(
+        String source,
+        String externalId,
+        String url,
+        String text,
+        String title,
+        String location,
+        java.time.LocalDate publishedAt) {
+      this(
+          source,
+          externalId,
+          url,
+          text,
+          title,
+          location,
+          publishedAt,
+          Completeness.unknown,
+          "completeness_not_provided");
+    }
+
     public Item(
         String source, String externalId, String url, String text, String title, String location) {
       this(source, externalId, url, text, title, location, null);

@@ -1,6 +1,7 @@
 package dev.curriculotron.sources;
 
 import dev.curriculotron.opportunities.domain.CanonicalUrl;
+import dev.curriculotron.opportunities.domain.VacancyEvidence.Completeness;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -52,7 +53,10 @@ public class CwiCareersSource implements JobSource {
                 CanonicalUrl.normalize(matcher.group(1)),
                 location == null ? text : text + "\n" + location,
                 text,
-                location));
+                location,
+                null,
+                Completeness.partial,
+                "listing_summary"));
       }
       if (byId.isEmpty()) throw new IllegalArgumentException("Nenhuma vaga reconhecida");
       return new SourceResult(
