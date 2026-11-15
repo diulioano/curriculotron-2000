@@ -77,3 +77,5 @@ O workflow frontend-ci passou a instalar Chromium, executar `npm run test:fronte
 
 Validação local da correção: 58/58 testes unitários com V8, 38/38 testes Playwright nos dois viewports, lint e build PASS; Prettier de package.json, vite.config.ts e do script PASS. Revisão independente do diff da correção: APPROVED, sem defeito impeditivo; o revisor não executou testes. A execução do workflow no Git será verificada após o push. A revisão por agente na CI e a configuração de proteção da branch continuam pendentes; T014 segue aberta.
 
+Na primeira execução remota da correção, o job frontend-ci passou por instalação, lint, 58 testes com cobertura, gate 11/11, build e 38 testes Playwright. O SonarCloud falhou em duas regras de segurança no uso de `npx` no workflow e sinalizou resolução de `git` via PATH no script. O workflow foi ajustado para invocar a CLI do Playwright instalada pelo lockfile; o script passou a apontar para o executável Git por caminho absoluto no runner Linux e nesta instalação Windows. Re-check independente: APPROVED, sem novo defeito impeditivo. A nova análise remota ainda precisa ser verificada.
+

@@ -7,8 +7,9 @@ if (!/^[0-9a-f]{40}$/.test(base ?? '')) {
   throw new Error('Pass the pull request base commit SHA.');
 }
 
+const git = process.platform === 'win32' ? 'C:\\Program Files\\Git\\cmd\\git.exe' : '/usr/bin/git';
 const diff = execFileSync(
-  'git',
+  git,
   ['diff', '--no-color', '--unified=0', '--diff-filter=ACMR', base, 'HEAD', '--', 'src'],
   { encoding: 'utf8' },
 );
