@@ -2,6 +2,26 @@
 
 Aplicação pessoal de revisão de vagas. Backend Java 25/Spring Boot e frontend React/Vite.
 
+## Docker Compose
+
+Para construir e iniciar o frontend e o backend em containers separados:
+
+```powershell
+docker compose up --build -d
+```
+
+Acesse o frontend em http://127.0.0.1:8080. O Nginx serve os arquivos do React e encaminha `/api`
+ao Spring dentro da rede privada do Compose, preservando a origem das requisições e os cookies de
+sessão. O backend não publica sua porta no host. O banco SQLite fica no volume
+`curriculotron-data` e sobrevive a `docker compose down`; `docker compose down -v` também apaga os
+dados.
+
+O Compose padrão publica HTTP somente em `127.0.0.1` e mantém o setup/login normal do app. Não
+use essa configuração para expor a aplicação na rede ou em uma VPS; esse uso requer configurar
+HTTPS e certificados.
+
+O HTML em `design/` é um artefato de referência e não faz parte dos serviços Docker.
+
 ## Uso local sem login
 
 Na raiz, PowerShell:

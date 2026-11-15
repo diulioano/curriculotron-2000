@@ -71,7 +71,9 @@ val copyFrontend = tasks.register<Copy>("copyFrontend") {
 	mustRunAfter(tasks.processResources)
 }
 
-tasks.named("classes") { dependsOn(copyFrontend) }
+if (!providers.gradleProperty("containerized").isPresent) {
+	tasks.named("classes") { dependsOn(copyFrontend) }
+}
 
 spotless {
 	java {
