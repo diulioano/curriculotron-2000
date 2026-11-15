@@ -140,6 +140,78 @@ test('cores: marcas e alternativas nos destaques dos cards', async ({ page }) =>
   ).toEqual([]);
 });
 
+test('cores: leitura, contraste, foco e ações em todas as empresas', async ({ page }) => {
+  const state = await mockCompanyColors(page);
+  for (const path of ['/', '/vagas', '/vagas?list=discarded']) {
+    state.items.forEach((item) => {
+      item.userDecision = path.includes('discarded') ? 'discarded' : 'none';
+    });
+    await page.goto(path);
+    await expect(page.locator('.job-card')).toHaveCount(13);
+    await page.evaluate(() => document.fonts.ready);
+    const visibleCards = page.locator('.job-card:visible');
+    const controls = visibleCards.locator('.job-title a, .card-actions button');
+    // Chegar a cada controle por Tab comprova sua presença na ordem de teclado.
+    {
+      for (let i = 0; i < (await controls.count()); i++) {
+        const control = controls.nth(i);
+        for (
+          let step = 0;
+          step < 100 && !(await control.evaluate((el) => el === document.activeElement));
+          step++
+        ) {
+          await page.keyboard.press('Tab');
+        }
+        await expect(control).toBeFocused();
+        await expect(control).toHaveCSS('outline-style', 'dashed');
+        await expect(control).toHaveCSS('outline-width', '3px');
+      }
+    }
+    if (path !== '/') {
+      await expect(page.getByText('Empresa não informada', { exact: true })).toHaveCount(2);
+      await expect(page.getByText('salário a confirmar', { exact: true })).toHaveCount(13);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    const textColors = await visibleCards.evaluateAll((cards) =>
+      cards.map((card) => ({
+        text: getComputedStyle(card.querySelector('.company-name') ?? card).color,
+        background: getComputedStyle(card).backgroundColor,
+        opacity: getComputedStyle(card).opacity,
+      })),
+    );
+    for (const style of textColors) {
+      expect(style.text).toBe('rgb(27, 27, 31)');
+      expect(style.background).toBe('rgb(255, 253, 246)');
+      expect(style.opacity).toBe('1');
+    }
+    if (path === '/' && page.viewportSize()?.width === 360) {
+      await expect(page.getByRole('link', { name: /Ver as outras/ })).toBeVisible();
+      await page.getByRole('link', { name: /Ver as outras/ }).click();
+      await expect(page.locator('.job-card:visible')).toHaveCount(13);
+    }
+  }
+  state.items.forEach((item) => {
+    item.userDecision = 'none';
+  });
+  await page.goto('/vagas');
+  const first = page.locator('.job-card').first();
+  await first.getByRole('button', { name: 'Me candidatei' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(first.getByRole('status')).toContainText('Candidatura registrada');
+  await first.getByRole('button', { name: 'Descartar' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.job-card')).toHaveCount(12);
+  await page.getByRole('link', { name: 'Descartadas', exact: true }).click();
+  await page.getByRole('button', { name: 'Restaurar' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Restaurar' })).toHaveCount(0);
+});
+
 test.beforeEach(async ({ page }) => {
   await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
     const path = new URL(route.request().url()).pathname;

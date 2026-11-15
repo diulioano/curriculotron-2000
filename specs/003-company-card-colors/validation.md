@@ -31,3 +31,7 @@ Browser 2/2 PASS (360/1280), quatro superfícies e 13 cards + detalhe BV, bordas
 ## T007 — empresa ausente
 
 Duas falhas TDD de rótulo antes, 46/46 testes depois. Rótulo ausente, grafite, iniciais decorativas e restauração explícitos. Lint/build PASS. Revisão qa APPROVED, 12/12 componentes executados pelo revisor.
+
+## T008 — teclado e acessibilidade
+
+Browser2/2 PASS (360/1280), com Tab em controles visíveis, foco dashed3px, axe sem violações, overflow ausente, tinta/fundo/opacidade preservados, leitura sem cor e Enter nas ações. Houve falha de fixture antes: todos descartados ao voltar à lista ativa; corrigida e reexecutada. Unit46/lint/build/Prettier tocados PASS. Revisão qa APPROVED com eslint focado; sem certificação universal apenas pelo axe.
