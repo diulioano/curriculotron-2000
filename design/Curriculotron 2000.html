@@ -700,15 +700,22 @@ document.addEventListener('DOMContentLoaded', async function() {
       const attributes = ['integrity="', 'crossorigin="'];
       const parts = [];
       let copyFrom = 0;
-      for (let i = 0; i < tag.length; i++) {
-        if (!' \t\r\n'.includes(tag[i])) continue;
+      let i = 0;
+      while (i < tag.length) {
+        if (!' \t\r\n'.includes(tag[i])) {
+          i++;
+          continue;
+        }
         const attribute = attributes.find((name) => lower.startsWith(name, i + 1));
-        if (!attribute) continue;
+        if (!attribute) {
+          i++;
+          continue;
+        }
         const end = tag.indexOf('"', i + 1 + attribute.length);
         if (end < 0) break;
         parts.push(tag.slice(copyFrom, i));
         copyFrom = end + 1;
-        i = end;
+        i = copyFrom;
       }
       parts.push(tag.slice(copyFrom));
       return parts.join('');
