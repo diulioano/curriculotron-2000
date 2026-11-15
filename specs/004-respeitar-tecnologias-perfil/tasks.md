@@ -27,7 +27,7 @@ A única mudança nesta fase é este documento. Não marcar tarefas como feitas 
 **Purpose**: Preparar entrega isolada e dados de aceitação, sem bootstrap de projeto.
 
 - [X] T001 Preparar a branch de implementação feature/US-004-respeitar-tecnologias-perfil a partir da main atualizada, preservando documentos não rastreados e alterações alheias; registrar base/branch em specs/004-respeitar-tecnologias-perfil/plan.md e seguir o ciclo de revisão/commit por tarefa, sem reset destrutivo ou push forçado.
-- [ ] T002 Definir fixtures com pelo menos vinte anúncios completos e resultados esperados por eixo em backend/src/test/resources/compatibility/postings.json, acrescentando amostras parciais/legadas, Java/Python, cargos das capturas, C/C++/C#, versões, negação, incidental, diferencial, contradição e exceção júnior; criar loader em backend/src/test/java/dev/curriculotron/opportunities/CompatibilityFixtures.java e validar integridade dos dados sem coleta externa.
+- [X] T002 Definir fixtures com pelo menos vinte anúncios completos e resultados esperados por eixo em backend/src/test/resources/compatibility/postings.json, acrescentando amostras parciais/legadas, Java/Python, cargos das capturas, C/C++/C#, versões, negação, incidental, diferencial, contradição e exceção júnior; criar loader em backend/src/test/java/dev/curriculotron/opportunities/CompatibilityFixtures.java e validar integridade dos dados sem coleta externa.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
