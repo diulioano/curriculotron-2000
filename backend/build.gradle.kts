@@ -3,6 +3,7 @@ plugins {
 	id("org.springframework.boot") version "4.1.2"
 	id("io.spring.dependency-management") version "1.1.7"
 	id("com.diffplug.spotless") version "8.11.0"
+	id("org.sonarqube") version "7.6.0.18749"
 }
 
 group = "dev.curriculotron"
