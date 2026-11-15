@@ -16,6 +16,9 @@ import java.util.List;
 class OpportunityEntity {
   @Id private String id;
 
+  @Column(name = "evidence_revision", nullable = false)
+  private long evidenceRevision = 1;
+
   @Column(nullable = false)
   private String title;
 

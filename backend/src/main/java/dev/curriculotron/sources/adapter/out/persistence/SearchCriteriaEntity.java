@@ -14,6 +14,9 @@ import java.util.List;
 class SearchCriteriaEntity {
   @Id private Integer id;
 
+  @Column(name = "version", nullable = false)
+  private long version;
+
   @Convert(converter = StringListJsonConverter.class)
   @Column(name = "target_roles", nullable = false)
   private List<String> targetRoles;
