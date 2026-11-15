@@ -19,3 +19,7 @@ Fixtures de 13 vagas e API simulada stateful criadas. Lint/build e 29 testes PAS
 ## T004 — resolução de cor
 
 TDD: 13 casos novos, cinco falhas antes da mudança e 13 PASS depois; suíte global 42/42, lint/build e Prettier dos arquivos tocados PASS. Cores prioritárias, Map exato, alias itau, grafite e hash da paleta implementados. Revisão qa APPROVED; revisor executou eslint dos arquivos e 13 testes focados.
+
+## T005 — consumo no card
+
+Consumidor e CSS existentes já usam --c em contorno/carimbo/hachura; nenhuma mudança de produção adicional necessária. Testes de componente cobrem três cards e ações. Global43/43, lint/build e Prettier focado PASS. Revisão qa APPROVED com 9/9 testes de componente e inspeção CSS.
