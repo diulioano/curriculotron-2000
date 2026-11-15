@@ -212,6 +212,49 @@ test('cores: leitura, contraste, foco e ações em todas as empresas', async ({ 
   await expect(page.getByRole('button', { name: 'Restaurar' })).toHaveCount(0);
 });
 
+test('cores: identidade estável ao navegar e alterar decisões', async ({ page, browser }) => {
+  const state = await mockCompanyColors(page);
+  const target = page
+    .locator('.job-card')
+    .filter({ has: page.getByRole('link', { name: 'Vaga color-0', exact: true }) });
+  for (const path of ['/', '/vagas?list=selection', '/vagas?list=secondary']) {
+    await page.goto(path);
+    await expect(target).toHaveCSS('--c', '#0070F2');
+  }
+  state.reversed = true;
+  state.subset = true;
+  await page.reload();
+  await expect(page.locator('.job-card')).toHaveCount(7);
+  await expect(target).toHaveCSS('--c', '#0070F2');
+  await page.reload();
+  await expect(target).toHaveCSS('--c', '#0070F2');
+  state.reversed = false;
+  state.subset = false;
+  await page.goto('/vagas');
+  await target.getByRole('button', { name: 'Descartar', exact: true }).click();
+  await expect(target).toHaveCount(0);
+  await page.getByRole('link', { name: 'Descartadas', exact: true }).click();
+  await expect(target).toHaveCSS('--c', '#0070F2');
+  await target.getByRole('button', { name: 'Restaurar' }).click();
+  await expect(target).toHaveCount(0);
+  await page.getByRole('link', { name: 'Seleção do dia', exact: true }).click();
+  await expect(target).toHaveCSS('--c', '#0070F2');
+  state.items[0].companyName = 'BV';
+  await page.reload();
+  await expect(target).toHaveCSS('--c', '#005CA9');
+  const context = await browser.newContext({ viewport: page.viewportSize() ?? undefined });
+  try {
+    const reopened = await context.newPage();
+    await mockCompanyColors(reopened, state);
+    await reopened.goto(new URL('/vagas', page.url()).href);
+    const reopenedCards = reopened.locator('.job-card');
+    await expect(reopenedCards.first()).toHaveCSS('--c', '#005CA9');
+    await expect(reopenedCards.nth(9)).toHaveCSS('--c', '#0369A1');
+  } finally {
+    await context.close();
+  }
+});
+
 test.beforeEach(async ({ page }) => {
   await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
     const path = new URL(route.request().url()).pathname;

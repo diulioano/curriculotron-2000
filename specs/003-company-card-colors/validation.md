@@ -44,3 +44,7 @@ Nenhum defeito CSS demonstrado: não houve alteração de panel.css/index.css. I
 ## T010 — invariantes de identidade
 
 Testes estendidos de caixa/bordas, nomes similares, ordem/subconjunto, Unicode e nomes longos: global58/58 PASS; revisão qa APPROVED com25/25 casos focados. Sem nova lógica de produção.
+
+## T011 — estabilidade nas jornadas
+
+Browser2/2 PASS em360/1280: Hoje/listas, ordem/subconjunto, reload, descarte/restauração, correção SAP->BV e novo contexto de navegador preservam identidades. Global58/lint/build PASS, format global mantém oito falhas anteriores. Revisão qa APPROVED com eslint focado e inspeção do cenário.
