@@ -20,7 +20,7 @@ Checks frontend após alterações de código: `npm test`, `npm run lint`, `npm 
 **Purpose**: preparar a entrega sem reinstanciar projeto ou migrar ferramentas.
 
 - [X] T001 Preparar a branch `feature/US-003-company-card-colors` a partir da main atualizada, preservando os documentos não rastreados de `specs/003-company-card-colors/`; conferir remotes e alterações existentes antes de trocar branch e registrar a base real em `specs/003-company-card-colors/validation.md`, sem descartar trabalho nem fazer force push.
-- [ ] T002 Conferir `frontend/package.json`, `frontend/package-lock.json` e `frontend/playwright.frontend.config.ts`, instalar dependências pelo lockfile e Chromium se necessário, executar baseline dos scripts de quickstart e registrar resultados/falhas preexistentes em `specs/003-company-card-colors/validation.md`; não trocar npm, versões, CSS ou stack.
+- [X] T002 Conferir `frontend/package.json`, `frontend/package-lock.json` e `frontend/playwright.frontend.config.ts`, instalar dependências pelo lockfile e Chromium se necessário, executar baseline dos scripts de quickstart e registrar resultados/falhas preexistentes em `specs/003-company-card-colors/validation.md`; não trocar npm, versões, CSS ou stack.
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
@@ -95,4 +95,5 @@ Entregar primeiro o MVP funcional US1, com testes e revisão. Completar US3 ante
 Cobertura: FR-001/003/004/007 em T004–T006; FR-006 em T004/T007; FR-008/010 em T007–T009; FR-002/005 em T004/T010–T012; FR-009 em T005/T006/T011; SC-001 em T006, SC-002 em T011/T012, SC-003/004 em T008/T009. T013 consolida a evidência.
 
 `before_tasks`/`after_tasks`: `.specify/extensions.yml` ausente na geração, portanto sem hooks registrados a executar. Nenhuma tarefa de implementação foi executada por esta geração documental.
+
 

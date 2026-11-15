@@ -6,3 +6,8 @@ Branch `feature/US-003-company-card-colors` criada da main sincronizada com orig
 
 Revisão T001: APPROVED pelo agente qa; base e estado conferidos, git diff --check sem problemas. Nenhum código alterado nesta tarefa.
 
+## T002 — baseline
+
+npm ci executado: 238 pacotes, 7 vulnerabilidades moderadas reportadas pelo npm (sem atualização fora do escopo). Chromium disponível após playwright install. npm test: 29/29; npm run lint: PASS; npm run build: PASS; npm run test:frontend: 32/32 nos dois viewports. npm run format:check: FAIL preexistente em playwright.config.ts, src/api/client.ts, src/pages/{ApplicationDetail,Login,Opportunities,Profile,ReviewQueue}.tsx e tests/e2e/support/seed.ts. Nenhum desses arquivos foi alterado. Cobertura não configurada neste baseline; não afirmar percentual. Sem dependência/versão nova. A falha de formatação preexistente está registrada e não será confundida com regressão da feature.
+
+Revisão T002: APPROVED por qa; revisor repetiu unidade29/lint/build e confirmou a falha de formatação nos mesmos oito arquivos.
