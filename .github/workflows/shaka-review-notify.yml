@@ -1,0 +1,28 @@
+name: Notify Shaka about new pull requests
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+
+jobs:
+  notify-shaka:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask Shaka to review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          payload="$(jq -nc --arg body '@openbotgit Shaka, novo PR aberto: rode a rotina de code review e publique o resultado neste PR.' '{body: $body}')"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --url "https://api.github.com/repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            --header 'Content-Type: application/json' \
+            --data "${payload}"
