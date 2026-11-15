@@ -120,6 +120,7 @@ function ProfileForm({ data }: { data: ProfileData }) {
           + Adicionar informação declarada
         </button>
         <button
+          type="submit"
           className="btn bt-pri"
           disabled={save.isPending || facts.some((f) => !f.statement.trim())}
         >
@@ -254,7 +255,7 @@ function CriteriaForm({ data }: { data: CriteriaData }) {
         Aceitar vagas júnior apenas com justificativa
       </label>
       <div>
-        <button className="btn bt-pri" disabled={save.isPending}>
+        <button type="submit" className="btn bt-pri" disabled={save.isPending}>
           Salvar critérios
         </button>
       </div>
@@ -359,7 +360,7 @@ export function Companies() {
           />
         </div>
         <div>
-          <button className="btn bt-pri" disabled={change.isPending || !name.trim()}>
+          <button type="submit" className="btn bt-pri" disabled={change.isPending || !name.trim()}>
             Adicionar empresa
           </button>
         </div>

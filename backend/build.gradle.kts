@@ -19,6 +19,10 @@ repositories {
 	mavenCentral()
 }
 
+dependencyLocking {
+	lockAllConfigurations()
+}
+
 // Testes de integração (SQLite real em diretório temporário, WireMock) — D-12
 val integrationTest: SourceSet = sourceSets.create("integrationTest") {
 	compileClasspath += sourceSets.main.get().output

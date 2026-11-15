@@ -3,7 +3,9 @@ import { expect, type Page } from '@playwright/test';
 
 /** Banco do app isolado (playwright.config.ts). Ausente ⇒ app externo, sem semeadura. */
 export const e2eDb = process.env.CURRICULOTRON_E2E_DB;
-export const PASSWORD = 'senha-e2e-curriculotron';
+const password = process.env.CURRICULOTRON_E2E_PASSWORD;
+if (!password) throw new Error('CURRICULOTRON_E2E_PASSWORD ausente');
+export const PASSWORD: string = password;
 
 export const saoPauloDate = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());

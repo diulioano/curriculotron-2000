@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
 <!--
@@ -695,7 +695,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     // written with: that fetch is exactly what SRI protects. (A crossorigin
     // on a parent whose child carries the blob — <video crossorigin><source>
     // — is left alone too; the attribute is then the author's to drop.)
-    template = template.replace(/<[a-z][^>]*>/gi, (tag) => /\s(?:src|href|srcset|poster|data|xlink:href)="blob:/i.test(tag) ? tag.replace(/\s+integrity="[^"]*"/gi, '').replace(/\s+crossorigin="[^"]*"/gi, '') : tag);
+    function stripBlobPinAttributes(tag) {
+      const parts = [];
+      let copyFrom = 0;
+      for (const match of tag.matchAll(/[ \t\r\n](?:integrity|crossorigin)="/gi)) {
+        const start = match.index;
+        if (start < copyFrom) continue;
+        const end = tag.indexOf('"', start + match[0].length);
+        if (end < 0) break;
+        parts.push(tag.slice(copyFrom, start));
+        copyFrom = end + 1;
+      }
+      parts.push(tag.slice(copyFrom));
+      return parts.join('');
+    }
+    template = template.replace(/<[a-z][^>]*>/gi, (tag) => /\s(?:src|href|srcset|poster|data|xlink:href)="blob:/i.test(tag) ? stripBlobPinAttributes(tag) : tag);
 
     const resourceScript = '<script>window.__resources = ' +
       JSON.stringify(resourceMap).replace(/<\//g, '<\\/') +

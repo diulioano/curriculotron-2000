@@ -141,6 +141,7 @@ export function Opportunities() {
           </div>
           <div>
             <button
+              type="submit"
               className="btn bt-pri"
               disabled={add.isPending || (!url.trim() && !text.trim())}
             >

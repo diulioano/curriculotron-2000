@@ -80,7 +80,11 @@ function ApplicationForms({ item }: { item: Detail }) {
             />
           </div>
           <div>
-            <button className="btn bt-pri" disabled={save.isPending || !reason.trim()}>
+            <button
+              type="submit"
+              className="btn bt-pri"
+              disabled={save.isPending || !reason.trim()}
+            >
               Salvar etapa
             </button>
           </div>
@@ -108,7 +112,7 @@ function ApplicationForms({ item }: { item: Detail }) {
             />
           </div>
           <div>
-            <button className="btn bt-pri" disabled={save.isPending || !text.trim()}>
+            <button type="submit" className="btn bt-pri" disabled={save.isPending || !text.trim()}>
               Salvar próximo passo
             </button>
           </div>

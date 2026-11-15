@@ -104,7 +104,6 @@ export function Login({ setupRequired }: Props) {
             required
             minLength={setupRequired ? MIN_LENGTH : undefined}
             aria-describedby={setupRequired ? `${passwordId}-hint` : undefined}
-            autoFocus
           />
           {setupRequired && (
             <span id={`${passwordId}-hint`} className="mono muted" style={{ fontSize: 13 }}>
