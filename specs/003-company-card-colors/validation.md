@@ -48,3 +48,8 @@ Testes estendidos de caixa/bordas, nomes similares, ordem/subconjunto, Unicode e
 ## T011 — estabilidade nas jornadas
 
 Browser2/2 PASS em360/1280: Hoje/listas, ordem/subconjunto, reload, descarte/restauração, correção SAP->BV e novo contexto de navegador preservam identidades. Global58/lint/build PASS, format global mantém oito falhas anteriores. Revisão qa APPROVED com eslint focado e inspeção do cenário.
+
+## T012 — integração da identidade
+
+T010/T011 executados com sucesso. Home e Opportunities inspecionados: consomem o mesmo OpportunityCard; detalhe usa o mesmo companyColor. Nenhuma divergência demonstrada que exija código adicional. Sem Effects, cache paralelo ou persistência de cor. Revisão T012 APPROVED por qa; integração e comparação de produção contra base conferidas.
+

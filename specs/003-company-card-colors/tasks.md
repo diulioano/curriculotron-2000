@@ -59,7 +59,7 @@ Checks frontend após alterações de código: `npm test`, `npm run lint`, `npm 
 
 - [X] T010 [P] [US2] Ampliar `frontend/tests/unit/company-colors.test.ts` para equivalência por caixa/espaços externos, diferenças por chave exata sem aliases aproximados, repetição independente de ordem/subconjunto e nomes longos/Unicode; usar saídas esperadas de casos representativos, sem reimplementar o hash nos testes e sem exigir exclusividade das cores (FR-002/005).
 - [X] T011 [P] [US2] Ampliar `frontend/tests/e2e/frontend.spec.ts` para preservar cor entre Hoje/três listas, variação de ordem/subconjunto nas respostas simuladas, reload e novo contexto de navegador; modelar descarte/restauração com leituras atualizadas e correção do nome para outra empresa conhecida; não adicionar controles de ordenação/filtro ausentes nem mudar payloads, CSRF ou ações (FR-002/005/009; SC-002).
-- [ ] T012 [US2] Executar os cenários de T010/T011, conferir os consumidores em `frontend/src/pages/Home.tsx` e `frontend/src/pages/Opportunities.tsx` e corrigir somente divergências comprovadas na resolução/consumo compartilhado em `frontend/src/lib/opportunity.ts` ou `frontend/src/components/OpportunityCard.tsx`; manter “Não criar Effects ou cache paralelo” e registrar resultados em `specs/003-company-card-colors/validation.md`.
+- [X] T012 [US2] Executar os cenários de T010/T011, conferir os consumidores em `frontend/src/pages/Home.tsx` e `frontend/src/pages/Opportunities.tsx` e corrigir somente divergências comprovadas na resolução/consumo compartilhado em `frontend/src/lib/opportunity.ts` ou `frontend/src/components/OpportunityCard.tsx`; manter “Não criar Effects ou cache paralelo” e registrar resultados em `specs/003-company-card-colors/validation.md`.
 
 **Checkpoint**: todas as histórias aceitas localmente e revisadas; ainda depende da entrega Git e dos checks aplicáveis.
 
@@ -95,6 +95,7 @@ Entregar primeiro o MVP funcional US1, com testes e revisão. Completar US3 ante
 Cobertura: FR-001/003/004/007 em T004–T006; FR-006 em T004/T007; FR-008/010 em T007–T009; FR-002/005 em T004/T010–T012; FR-009 em T005/T006/T011; SC-001 em T006, SC-002 em T011/T012, SC-003/004 em T008/T009. T013 consolida a evidência.
 
 `before_tasks`/`after_tasks`: `.specify/extensions.yml` ausente na geração, portanto sem hooks registrados a executar. Nenhuma tarefa de implementação foi executada por esta geração documental.
+
 
 
 
