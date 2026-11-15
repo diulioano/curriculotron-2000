@@ -19,3 +19,22 @@ Desktop.ini
 .specify/integrations/extensions/*/local-config.yml
 .specify/integrations/packages/
 .specify/integrations/packages.json
+
+# Backend (Gradle)
+backend/build/
+backend/.gradle/
+
+# Frontend (Vite/Playwright)
+frontend/node_modules/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+
+# Dados locais e certificados — nunca versionar
+*.db
+*.db-wal
+*.db-shm
+*.pem
+certs/
+.env*
+!.env.example

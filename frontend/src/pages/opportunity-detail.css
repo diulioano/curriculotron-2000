@@ -1,0 +1,274 @@
+/* Detalhe da vaga — segue design/Curriculotron 2000.html ("Detalhe da vaga") */
+
+.job-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+}
+.job-detail p {
+  margin: 0;
+}
+.job-detail ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.small {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.back-link {
+  font-size: 18px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  align-self: flex-start;
+}
+.back-link:hover {
+  text-decoration: underline;
+}
+.back-link svg {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.4;
+  stroke-linejoin: miter;
+}
+
+.job-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: center;
+}
+.company-stamp {
+  width: 92px;
+  height: 92px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(6% 3%, 97% 0, 100% 93%, 2% 100%);
+}
+.company-stamp span {
+  background: var(--card);
+  border: 3px solid var(--c, var(--ink));
+  font-family: var(--font-marker);
+  font-size: 34px;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.job-detail-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 480px;
+  min-width: 0;
+}
+.job-detail-company {
+  font-size: 20px;
+  font-weight: 700;
+}
+.tier-tag {
+  font-size: 13px;
+  font-weight: 400;
+  border: 2px solid var(--c, var(--ink));
+  padding: 1px 6px;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.job-detail-title h1 {
+  font-size: clamp(30px, 4vw, 46px);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+.job-detail-title .squiggle {
+  stroke: var(--c, var(--ink));
+  stroke-width: 2.6;
+}
+
+.job-detail-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 48px;
+  align-items: flex-start;
+}
+.job-detail-main {
+  flex: 999 1 600px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 34px;
+}
+.job-detail-aside {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.job-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 26px 30px;
+}
+.job-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.summary-label {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.summary-value {
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+.summary-value.salary {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* Ausência: hachura cinza, buraco visível — nunca preenchido com chute */
+.absent {
+  --c: var(--hatch-soft);
+  font-size: 17px;
+  padding: 3px 8px;
+  align-self: flex-start;
+}
+.absent > span {
+  background: var(--card);
+  padding: 0 4px;
+}
+
+.why {
+  background: var(--card);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.why h2,
+.decide h2 {
+  font-size: 24px;
+}
+.why p {
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.requirements,
+.missing {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.requirements > h2,
+.missing h2 {
+  font-size: 26px;
+}
+.requirements-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+.requirements-columns > section {
+  flex: 1 1 280px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 17px;
+}
+.requirements-columns h3 {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 18px;
+}
+/* Inferência: til + contorno tracejado */
+.req-inferred {
+  --d: #6b6b73;
+  padding: 14px 16px;
+}
+.missing ul {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.decide {
+  background: var(--card);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.decide .btn {
+  justify-content: center;
+  font-size: 17px;
+  min-height: 48px;
+}
+.decide .open-site {
+  font-weight: 400;
+}
+
+/* Evidência: monoespaçada = de onde veio e quando */
+.evidence {
+  --d: var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  padding-top: 16px;
+  overflow-wrap: anywhere;
+}
+.evidence h2 {
+  font-family: var(--font-hand);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.evidence-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@media (max-width: 640px) {
+  .job-detail {
+    gap: 26px;
+  }
+  .job-detail-head {
+    gap: 16px;
+  }
+  .company-stamp {
+    width: 64px;
+    height: 64px;
+  }
+  .company-stamp span {
+    width: 42px;
+    height: 42px;
+    font-size: 24px;
+  }
+  .job-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+}
+
+.absent .salary {
+  font-weight: 400;
+  font-size: inherit;
+}

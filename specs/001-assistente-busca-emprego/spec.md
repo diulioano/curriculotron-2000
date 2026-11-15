@@ -27,6 +27,8 @@ Como candidato com pouco tempo, quero abrir o painel no computador ou celular e 
 3. **Given** vagas repetidas, descartadas e já disputadas, **When** ocorre nova busca manual ou diária, **Then** elas não voltam como novas recomendações.
 4. **Given** uma vaga sem remuneração e com requisito inferido, **When** abro seu detalhe, **Then** vejo “salário a confirmar”, a inferência separada dos fatos, fonte, link e data de consulta.
 5. **Given** entrevistas, respostas e vagas pendentes, **When** abro a página inicial, **Then** vejo vagas para avaliar, candidaturas com próximas ações e respostas que exigem atenção, com prazos próximos destacados.
+6. **Given** que solicito uma busca manual sem escolher datas, **When** ela consulta as fontes, **Then** prioriza vagas publicadas nos últimos 30 dias; posso informar outro período nessa busca.
+7. **Given** que a data de publicação não está disponível na fonte, **When** a vaga aparece, **Then** ela fica identificada como data desconhecida e não é apresentada como publicada dentro do período escolhido.
 
 ### User Story 2 - Criar, revisar e controlar bots por conversa (Priority: P1)
 
@@ -129,7 +131,7 @@ Cada requisito é verificado pelas jornadas indicadas e pela inspeção de seus 
 
 - **FR-001 (J5)**: Importar o perfil de `curriculo-en-draft.md` e permitir revisão e atualização de critérios e informações, preservando origem e distinção entre informação documentada e declarada pelo usuário.
 - **FR-002 (J1, J5)**: Aplicar o perfil inicial e regras de negócio abaixo; permitir editar empresas prioritárias e consultar sugestões em lista secundária sem promovê-las automaticamente.
-- **FR-003 (J1)**: Executar busca diária e sob demanda, com fontes disponíveis e permitidas, incluindo investigação de Gupy, LinkedIn e sites das empresas. Registrar fontes consultadas, falhas e limitações.
+- **FR-003 (J1)**: Executar busca sob demanda com fontes disponíveis e permitidas, incluindo investigação de Gupy, LinkedIn e sites das empresas. O período padrão cobre os 30 dias anteriores; cada busca manual pode receber datas inicial e final. Registrar fontes consultadas, falhas e limitações. Busca diária automática fica desabilitada por padrão até o usuário habilitá-la.
 - **FR-004 (J1)**: Comparar, deduplicar e priorizar vagas; selecionar de cinco a dez novas oportunidades quando houver compatibilidade suficiente, aceitar menos e nunca ultrapassar dez novas seleções no mesmo dia, inclusive em buscas manuais.
 - **FR-005 (J1, J3)**: Manter oportunidades restantes na lista secundária e excluir descartadas e vagas vinculadas a candidaturas de futuras recomendações, salvo reversão explícita do usuário.
 - **FR-006 (J1)**: Exibir título, empresa, localização, modalidade, requisitos, salário disponível, fonte, link, data de consulta, disponibilidade e motivo da recomendação. Separar fatos, ausências e inferências.
@@ -153,8 +155,8 @@ Cada requisito é verificado pelas jornadas indicadas e pela inspeção de seus 
 - **RB-001 — Perfil**: Desenvolvedor pleno com foco backend Java e experiência fullstack; alvo principal fullstack pleno Java. Considerar Java 17, Spring Boot, Angular, React, REST, Kafka, microsserviços, bancos de dados, JUnit, Mockito e testes unitários/de integração conforme currículo e informações revisadas.
 - **RB-002 — Localização**: Preferir remoto. Considerar híbrido na região metropolitana de Porto Alegre, ponderando empresa, remuneração, crescimento e deslocamento, sem limite fixo de dias presenciais. Não presumir disponibilidade para mudança ou trabalho presencial fora desse recorte.
 - **RB-003 — Contratação**: Preferir CLT com bruto mensal mínimo de R$ 6.000; PJ é alternativa menos desejada, mínimo de R$ 9.000 mensais. Salário ausente não exclui, mas exige “salário a confirmar”. Valores explicitamente abaixo do mínimo não entram na seleção principal. Faixa que cruza o mínimo exige confirmação de oferta compatível.
-- **RB-004 — Flexibilidade**: Considerar júnior se salário, empresa e crescimento justificarem, registrando o motivo. Aceitar exigência de inglês sem inferir fluência não informada. Ausência de evidência de competência é lacuna, não experiência inventada.
-- **RB-005 — Empresas**: Prioridades iniciais: PicPay, BV, CWI, Digital Business, CI&T e SAP. Registrar experiência prévia na CWI e interesse em retornar, sem presumir contratação preferencial. Sugerir grandes empresas brasileiras e similares em lista secundária editável.
+- **RB-004 — Flexibilidade**: Considerar júnior se salário, empresa e crescimento justificarem, registrando o motivo. Justificativa por empresa definida pelo usuário: na SAP, júnior vale a pena (menos carga, salário maior) — 2026-11-14. Aceitar exigência de inglês sem inferir fluência não informada. Ausência de evidência de competência é lacuna, não experiência inventada.
+- **RB-005 — Empresas**: Prioridades iniciais: PicPay, BV, CWI, DB (db.tec.br, vagas em db.gupy.io), CI&T e SAP. Registrar experiência prévia na CWI e interesse em retornar, sem presumir contratação preferencial. Sugerir grandes empresas brasileiras e similares em lista secundária editável.
 - **RB-006 — Veracidade**: Não inventar experiências, resultados, métricas, conhecimentos ou qualificações. Preparar materiais não implica alterar automaticamente o currículo original.
 - **RB-007 — Evidência**: Clique em link não confirma envio; ausência de resposta não significa rejeição. Atualizações automáticas devem apontar sua evidência. Informação incerta deve ficar visível e corrigível.
 - **RB-008 — Autonomia**: Pesquisa, classificação, organização, atualização sustentada por evidência e preparação de materiais podem ocorrer automaticamente. Candidatura é feita pelo usuário no portal; mensagens externas e ativação de bots dependem dos controles definidos.
@@ -200,13 +202,14 @@ Piloto de duas semanas. Metas numéricas não fornecidas no pedido são hipótes
 - **SC-006**: Ao menos uma simulação técnica e uma comportamental, cobrindo português e inglês, passam pelos critérios de uma pergunta por vez e feedback relacionado à vaga, sem acréscimo de competências ao currículo.
 - **SC-007**: Todos os testes de falha de fonte, revogação do Gmail, limite de uso e interrupção local mostram estado e atualização real corretos; retomadas não duplicam efeitos.
 - **SC-008**: Zero candidaturas automáticas, mensagens externas sem aprovação específica, bots ativados sem revisão ou gastos adicionais automáticos em todo o piloto e nos testes de controle.
+- **SC-009**: Uma busca sem período explícito usa os 30 dias anteriores; um período manual escolhido pelo usuário é aplicado e datas de publicação desconhecidas ficam identificadas como desconhecidas.
 
 ## Assumptions
 
 - Não há dúvidas de produto bloqueantes para escrever a especificação. Questões de mecanismo e viabilidade permanecem no planejamento, sem pressupor respostas positivas.
 - A constituição existente é um template não preenchido; não estabelece princípios adicionais aprovados.
 - O currículo disponível é fonte inicial, não prova de competências além do texto. Atualidade das informações deve ser revisada pelo usuário.
-- Para tornar o comportamento testável, assume-se dia e horários locais em America/Sao_Paulo; horário da busca será configurável. Buscas adicionais alimentam a lista secundária depois do teto diário, sem apagar a seleção já avaliada.
+- Para tornar o comportamento testável, assume-se dia e horários locais em America/Sao_Paulo. Busca manual usa os 30 dias anteriores por padrão e permite definir outro período; rotina diária automática começa desabilitada e só deve ser habilitada quando o usuário decidir que já há base suficiente. Buscas adicionais alimentam a lista secundária depois do teto diário, sem apagar a seleção já avaliada.
 - Assume-se destaque de prazos nos próximos sete dias, com maior urgência para vencidos e próximas 48 horas; limites podem ser ajustados pelo usuário.
 - Assume-se resumo diário opcional ao próprio usuário, autorizado ao habilitar a rotina. Essa autorização não permite enviar mensagens a recrutadores.
 - Estados iniciais propostos: enviada/aguardando resposta, contato recebido, entrevista, proposta, encerrada por rejeição e retirada pelo usuário. Só evidência explícita ou ação manual muda estado; os termos podem ser refinados no planejamento sem mudar os controles.

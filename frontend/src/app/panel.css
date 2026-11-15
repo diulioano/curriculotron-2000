@@ -1,0 +1,393 @@
+﻿.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.stack.compact {
+  gap: 8px;
+}
+.stack.roomy {
+  gap: 42px;
+}
+.stack p {
+  margin: 0;
+}
+.page-heading,
+.section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px 24px;
+}
+.page-heading {
+  padding: 12px 0 16px;
+}
+.page-heading h1 {
+  font-size: clamp(32px, 4.5vw, 48px);
+  overflow-wrap: anywhere;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin: 0 0 12px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.home-intro {
+  padding: 16px 0 12px;
+}
+.home-intro h1 {
+  font-size: clamp(32px, 4.3vw, 56px);
+  line-height: 1.25;
+  max-width: 940px;
+  margin: 14px 0 22px;
+}
+.home-intro .hl {
+  padding: 0 8px;
+}
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2.3fr) minmax(260px, 1fr);
+  gap: 36px;
+}
+.jobs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  padding: 8px 6px;
+}
+/* Cartão de vaga (design/: borda rabiscada na cor da empresa, carimbo hachurado) */
+.job-card {
+  background: var(--card);
+  padding: 20px 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.job-card p {
+  margin: 0;
+}
+.job-card .job-title {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.job-card .job-title a {
+  text-decoration: none;
+}
+.job-card .job-title a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.card-top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.company-mark {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(8% 4%, 96% 0, 100% 90%, 4% 100%);
+}
+.company-mark span {
+  background: var(--card);
+  border: 2.5px solid var(--c, var(--ink));
+  font-family: var(--font-marker);
+  font-size: 20px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.company-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.company-name {
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.1;
+}
+.company-tier,
+.job-source {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.job-place {
+  font-size: 16px;
+}
+.job-salary {
+  font-size: 14px;
+  font-weight: 700;
+}
+.job-salary .muted {
+  font-weight: 400;
+}
+.job-salary-missing {
+  --c: var(--hatch-soft);
+  font-size: 14px;
+  padding: 4px 8px;
+  align-self: flex-start;
+}
+.job-salary-missing span {
+  background: var(--card);
+  padding: 0 4px;
+}
+.job-reason {
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+.job-deadline {
+  font-weight: 700;
+  font-size: 16px;
+  padding: 2px 8px;
+  align-self: flex-start;
+}
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 4px;
+}
+.card-actions .card-link {
+  padding: 0 6px;
+  font-weight: 400;
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.salary {
+  font-weight: 700;
+  font-size: 20px;
+}
+.fit-note {
+  padding-left: 12px;
+  border-left: 3px solid var(--highlight);
+}
+.card-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 12px;
+  --d: var(--line-soft);
+}
+.card-bottom .btn {
+  padding: 0 8px;
+}
+.note-card {
+  background-color: var(--card);
+  padding: 24px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.note-card h2,
+.system-strip h2 {
+  font-size: 24px;
+}
+.yellow-note {
+  background-color: #fff0a0;
+  border: 1px solid #b9a448;
+  box-shadow: 3px 4px 0 #1b1b1f14;
+  transform: rotate(-0.6deg);
+}
+.count {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.action-item {
+  padding: 0 0 16px;
+  --d: var(--line-soft);
+}
+.action-item a {
+  font-weight: 700;
+}
+.deadline {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  display: inline-block;
+  width: fit-content;
+  padding: 6px 8px;
+}
+.deadline.soon {
+  background: var(--highlight);
+}
+.deadline.urgent,
+.deadline.overdue {
+  color: var(--danger);
+  border: 2px dashed var(--danger);
+  font-weight: 700;
+}
+.notice {
+  padding: 14px 18px;
+  background-color: #fff6c6;
+  font-weight: 700;
+}
+.empty {
+  padding: 30px 24px;
+  color: var(--ink-muted);
+  background-color: var(--card);
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 16px;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 14px;
+  text-decoration: none;
+}
+.tab[aria-current] {
+  font-weight: 700;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+.notes-list {
+  margin: 0;
+  padding-left: 24px;
+}
+.notes-list li + li {
+  margin-top: 12px;
+}
+.system-strip {
+  padding: 24px;
+}
+.integration-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 48px;
+  padding-top: 24px;
+}
+.application-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 24px;
+}
+.application-row h2 {
+  font-family: var(--font-hand);
+  font-weight: 700;
+}
+.stage {
+  font-size: 12px;
+  width: fit-content;
+  background: var(--highlight);
+  padding: 6px 10px;
+}
+.filter-field {
+  max-width: 380px;
+}
+.timeline {
+  margin: 0;
+  padding-left: 24px;
+  border-left: 2px dashed var(--line-soft);
+  list-style: none;
+}
+.timeline li {
+  position: relative;
+  padding: 0 0 28px 12px;
+  overflow-wrap: anywhere;
+}
+.timeline li::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--ink);
+  left: -30px;
+  top: 6px;
+}
+.timeline h3 {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  margin: 8px 0;
+}
+blockquote {
+  margin: 16px 0;
+  border-left: 3px solid var(--highlight);
+  padding-left: 16px;
+}
+textarea.input {
+  resize: vertical;
+}
+@media (max-width: 1000px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dashboard-grid aside {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+@media (max-width: 640px) {
+  .jobs-grid,
+  .detail-grid,
+  .application-row,
+  .dashboard-grid aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .page-heading {
+    align-items: flex-start;
+  }
+  .note-card {
+    padding: 20px 16px;
+  }
+  .job-card {
+    padding: 18px 14px 14px;
+  }
+  .home-intro h1 {
+    font-size: 31px;
+  }
+  .stack.roomy {
+    gap: 28px;
+  }
+  .actions {
+    gap: 14px;
+  }
+}
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.check-field input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ink);
+  flex-shrink: 0;
+}

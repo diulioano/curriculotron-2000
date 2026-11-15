@@ -1,0 +1,307 @@
+/* Página Hoje — segue design/Curriculotron 2000 – Página inicial · desktop.html */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+.home p {
+  margin: 0;
+}
+
+.status-strip {
+  --d: var(--line-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  padding-bottom: 14px;
+}
+.status-strip strong {
+  color: var(--ink);
+}
+.strip-alert {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.home-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 40px;
+}
+.home-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.home-date {
+  font-size: 14px;
+}
+.home-title h1 {
+  font-size: clamp(32px, 4vw, 52px);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.home-title h1 .hl {
+  padding: 0 10px;
+}
+
+.home-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin: 0;
+  padding: 0 6px;
+  list-style: none;
+}
+.stat {
+  padding: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  font-size: 15px;
+}
+.stat-value {
+  font-family: var(--font-marker);
+  font-size: 34px;
+  line-height: 1;
+}
+.stat-value small {
+  font-size: 18px;
+}
+
+.home-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 48px;
+  align-items: flex-start;
+}
+.home-main {
+  flex: 999 1 640px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.home-aside {
+  flex: 1 1 340px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+.home-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 20px;
+}
+.home-section-head h2 {
+  font-size: 30px;
+}
+.home-section-head p {
+  font-size: 16px;
+}
+.home-footnote {
+  font-size: 15px;
+}
+
+.jobs-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 44px 38px;
+  padding: 8px 6px;
+}
+
+.needs-you {
+  background: var(--card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.home-aside h2 {
+  font-size: 24px;
+}
+.need-item {
+  --d: var(--line-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.need-item:last-of-type {
+  background-image: none;
+  padding-bottom: 0;
+}
+.need-item strong {
+  font-size: 17px;
+}
+.need-kind {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.next-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.next-action {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.next-bar {
+  width: 14px;
+  height: 40px;
+  flex: none;
+}
+.next-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.next-title {
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.next-title:hover {
+  text-decoration: underline;
+}
+.next-due {
+  font-size: 16px;
+  padding: 0 6px;
+  align-self: flex-start;
+}
+.next-meta {
+  font-size: 12px;
+}
+
+.integration-alert {
+  --d: var(--danger);
+  background-color: var(--card);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.integration-alert h2 {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--danger);
+}
+.integration-alert p {
+  font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.integration-alert .btn {
+  align-self: flex-start;
+}
+
+.mobile-alert {
+  --d: var(--danger);
+  background-color: var(--card);
+  padding: 10px 12px;
+  font-size: 15px;
+  line-height: 1.3;
+}
+.mobile-alert strong {
+  color: var(--danger);
+}
+.more-jobs {
+  font-size: 16px;
+}
+
+@media (max-width: 640px) {
+  .home {
+    gap: 26px;
+  }
+  .home-date {
+    font-size: 12px;
+  }
+  .home-title h1 {
+    font-size: 32px;
+    line-height: 1.1;
+  }
+  .home-title h1 .hl {
+    padding: 0 6px;
+  }
+  /* No celular o título resume números, pendências e prazos; o resto do topo sai. */
+
+  .home-stats,
+  .squiggle,
+  .needs-you,
+  .integration-alert,
+  .home-section-head p,
+  .home-footnote {
+    display: none;
+  }
+  .home-columns {
+    gap: 36px;
+  }
+  .home-section-head h2 {
+    font-size: 24px;
+  }
+  .jobs-flow {
+    flex-direction: column;
+    gap: 30px;
+    padding: 4px;
+  }
+  /* Larguras e lados alternados, como no design mobile. */
+  .jobs-flow .job-card {
+    flex: none !important;
+    width: 100%;
+    padding: 16px;
+    gap: 9px;
+  }
+  .jobs-flow .job-card:nth-child(2) {
+    width: 92%;
+    align-self: flex-end;
+  }
+  .jobs-flow .job-card:nth-child(3) {
+    width: 88%;
+    align-self: flex-start;
+  }
+  .jobs-flow .job-card:nth-child(n + 4) {
+    display: none;
+  }
+  .jobs-flow .job-card .job-title {
+    font-size: 20px !important;
+  }
+  .jobs-flow .job-card:first-child .job-title {
+    font-size: 24px !important;
+  }
+  .jobs-flow .company-tier,
+  .jobs-flow .job-reason {
+    display: none;
+  }
+  .jobs-flow .card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .jobs-flow .card-actions .btn {
+    justify-content: center;
+    padding: 0 8px;
+  }
+  .jobs-flow .card-link {
+    display: none;
+  }
+  .next-actions h2 {
+    font-size: 22px;
+  }
+}

@@ -1,0 +1,359 @@
+/*
+ * Base visual do Curriculotron 2000 — extraída de design/Curriculotron 2000 – Página inicial · desktop.html.
+ * Fontes servidas localmente (Kalam e Space Mono: SIL OFL 1.1; Permanent Marker: Apache 2.0;
+ * ver src/assets/fonts/LICENSES.txt): o painel funciona só na LAN, sem serviços externos.
+ */
+
+@font-face {
+  font-family: 'Kalam';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/kalam-400-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Kalam';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/kalam-700-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Permanent Marker';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/permanent-marker-400-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/space-mono-400-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/space-mono-700-latin.woff2') format('woff2');
+}
+
+:root {
+  --ink: #1b1b1f;
+  --ink-soft: #2a2a30;
+  --ink-muted: #44444c;
+  --ink-hover: #55555d;
+  --paper: #fbf8ef;
+  --card: #fffdf6;
+  --rule: #e9e4d4;
+  --line-soft: #b9b3a2;
+  --hatch-soft: #c9c2ae;
+  --highlight: #ffe45c;
+  --danger: #9a2a12;
+  --ok: #2f7d12;
+  --warn: #8a5a00;
+
+  --font-hand: 'Kalam', cursive;
+  --font-marker: 'Permanent Marker', cursive;
+  --font-mono: 'Space Mono', monospace;
+
+  --gutter: 32px;
+  --max-width: 1320px;
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--paper);
+  /* Papel pautado */
+  background-image: linear-gradient(var(--rule) 1px, transparent 1px);
+  background-size: 100% 32px;
+  color: var(--ink);
+  font-family: var(--font-hand);
+  font-size: 17px;
+  line-height: 1.4;
+  overflow-x: hidden;
+}
+
+a {
+  color: var(--ink);
+}
+a:hover {
+  color: var(--ink-hover);
+}
+
+:focus-visible {
+  outline: 3px dashed var(--ink);
+  outline-offset: 4px;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-marker);
+  font-weight: 400;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+.muted {
+  color: var(--ink-muted);
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- Traços rabiscados ---- */
+
+/* Caixa com bordas tortas (usa o filtro #rough desenhado no Layout) */
+.sk {
+  position: relative;
+}
+.sk::before {
+  content: '';
+  position: absolute;
+  inset: -1px -6px;
+  border-left: 2px solid var(--c, var(--ink));
+  border-right: 2px solid var(--c, var(--ink));
+  transform: rotate(0.6deg);
+  pointer-events: none;
+  filter: url(#rough);
+}
+.sk::after {
+  content: '';
+  position: absolute;
+  inset: -6px -1px;
+  border-top: 2px solid var(--c, var(--ink));
+  border-bottom: 2px solid var(--c, var(--ink));
+  transform: rotate(-0.45deg);
+  pointer-events: none;
+  filter: url(#rough);
+}
+
+.hatch {
+  background-image: repeating-linear-gradient(
+    -48deg,
+    var(--c, var(--ink)) 0 1.6px,
+    transparent 1.6px 7px
+  );
+}
+
+/* Conteúdo que muda entre celular e computador (design/: versões desktop e mobile) */
+.only-narrow {
+  display: none;
+}
+@media (max-width: 640px) {
+  .only-wide {
+    display: none !important;
+  }
+  .only-narrow {
+    display: revert;
+  }
+}
+
+/* Rabisco em zigue-zague sob títulos */
+.squiggle {
+  max-width: 100%;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.4;
+  stroke-linejoin: miter;
+}
+.squiggle polyline {
+  filter: url(#rough);
+}
+
+/* Marca-texto */
+.hl {
+  background: linear-gradient(97deg, transparent 1%, var(--highlight) 2% 96%, transparent 97%);
+}
+
+/* Bordas tracejadas irregulares */
+.dsh,
+.dsh-b,
+.dsh-t {
+  --dash: repeating-linear-gradient(
+    90deg,
+    var(--d, var(--ink)) 0 15px,
+    transparent 15px 21px,
+    var(--d, var(--ink)) 21px 24px,
+    transparent 24px 32px,
+    var(--d, var(--ink)) 32px 55px,
+    transparent 55px 60px,
+    var(--d, var(--ink)) 60px 66px,
+    transparent 66px 75px,
+    var(--d, var(--ink)) 75px 84px,
+    transparent 84px 89px,
+    var(--d, var(--ink)) 89px 91px,
+    transparent 91px 99px
+  );
+  --dash-v: repeating-linear-gradient(
+    180deg,
+    var(--d, var(--ink)) 0 9px,
+    transparent 9px 15px,
+    var(--d, var(--ink)) 15px 33px,
+    transparent 33px 38px,
+    var(--d, var(--ink)) 38px 41px,
+    transparent 41px 49px,
+    var(--d, var(--ink)) 49px 62px,
+    transparent 62px 69px
+  );
+  background-repeat: no-repeat;
+}
+.dsh {
+  background-image: var(--dash), var(--dash), var(--dash-v), var(--dash-v);
+  background-position:
+    0 0,
+    23px 100%,
+    0 11px,
+    100% 0;
+  background-size:
+    100% 2px,
+    100% 2px,
+    2px 100%,
+    2px 100%;
+}
+.dsh-b {
+  background-image: var(--dash);
+  background-position: 0 100%;
+  background-size: 100% 2px;
+}
+.dsh-t {
+  background-image: var(--dash);
+  background-position: 17px 0;
+  background-size: 100% 2px;
+}
+
+/* ---- Botões ---- */
+
+.btn {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 16px;
+  min-height: 44px;
+  padding: 0 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--ink);
+  background-color: transparent;
+  border: 0;
+}
+.btn:focus-visible {
+  outline: 3px dashed var(--ink);
+  outline-offset: 6px;
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.bt {
+  position: relative;
+  isolation: isolate;
+  transition: transform 0.12s;
+}
+.bt:hover:not(:disabled) {
+  transform: translate(-1px, -1px) rotate(-0.4deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bt {
+    transition: none;
+  }
+  .bt:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+.bt-pri {
+  background: var(--ink);
+  color: var(--paper);
+}
+.bt-pri:hover {
+  color: var(--paper);
+}
+.bt-pri::before {
+  content: '';
+  position: absolute;
+  inset: 5px -6px -6px 5px;
+  z-index: -1;
+  background-image: repeating-linear-gradient(-48deg, var(--ink) 0 1.4px, transparent 1.4px 5px);
+  pointer-events: none;
+}
+.bt-pri::after {
+  content: '';
+  position: absolute;
+  inset: -4px -3px -3px -5px;
+  border: 1.6px solid var(--ink);
+  transform: rotate(-1.1deg);
+  filter: url(#rough);
+  pointer-events: none;
+}
+
+.bt-sec {
+  --d: var(--ink);
+  background-color: transparent;
+}
+.bt-sec:hover {
+  background-color: rgba(27, 27, 31, 0.06);
+}
+
+/* ---- Formulários ---- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field label {
+  font-weight: 700;
+}
+.input {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: var(--card);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  width: 100%;
+}
+.input:focus-visible {
+  outline: 3px dashed var(--ink);
+  outline-offset: 3px;
+}
+
+.alert {
+  --d: var(--danger);
+  padding: 12px 16px;
+  background-color: var(--card);
+  color: var(--danger);
+  font-weight: 700;
+}
