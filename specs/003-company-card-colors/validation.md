@@ -65,9 +65,15 @@ O resultado da implementação local atende aos cenários descritos; entrega com
 
 Commits delimitados T001–T013 enviados para origin/feature/US-003-company-card-colors. PR rascunho aberto: https://github.com/diulioano/curriculotron-2000/pull/4 . Execução frontend-ci iniciada no Git e observada em andamento: https://github.com/diulioano/curriculotron-2000/actions/runs/43747439169 ; isto comprova início, não sucesso.
 
-Inspeção dos workflows e da API GitHub: frontend-ci executa npm ci --ignore-scripts, lint, testes e build; não executa esta suíte Playwright, cobertura ou revisão por agente. Backend-ci possui Sonar condicional. Repositório sem secrets cadastrados, inclusive SONAR_TOKEN e credencial de revisão. main protegida com uma aprovação obrigatória; resposta da proteção não listou checks obrigatórios. A proteção não foi alterada nesta demanda.
+Inspeção dos workflows e da API GitHub no SHA inicial do PR: frontend-ci executava npm ci --ignore-scripts, lint, testes e build; não executava esta suíte Playwright, cobertura ou revisão por agente. Backend-ci possuía Sonar condicional. Repositório sem secrets cadastrados, inclusive SONAR_TOKEN e credencial de revisão. main protegida com uma aprovação obrigatória; resposta da proteção não listou checks obrigatórios. A proteção não foi alterada nesta demanda.
 
 T014 permanece desmarcada: não foi possível certificar a esteira obrigatória de revisão por agente no Git, Sonar e gates de cobertura. Não adicionar provedor pago nem prometer revisão automatizada sem credencial/configuração. A US não está declarada integralmente concluída e o PR não foi mergeado. São necessários configurar/revalidar esses gates antes da liberação. Revisão local por agentes não substitui execução no Git.
 
 Revisão qa APPROVED somente para o registro parcial de T014; tarefa permanece aberta e gates não certificados. Nenhum hook after_implement registrado (extensions.yml ausente).
+
+## T014 — correção do gate frontend após revisão do PR
+
+O workflow frontend-ci passou a instalar Chromium, executar `npm run test:frontend` e medir cobertura V8 com `@vitest/coverage-v8` fixado em 5.1.0. O script `frontend/scripts/check-changed-coverage.mjs` compara o relatório com o diff do SHA base do PR e exige 80% das linhas executáveis alteradas. `coverage/` foi ignorado pelo Git. A medição local foi 11/11 linhas (100%); cobertura global de `frontend/src` foi 47,51%, incluindo legado não coberto. O gate novo não afirma 80% global.
+
+Validação local da correção: 58/58 testes unitários com V8, 38/38 testes Playwright nos dois viewports, lint e build PASS; Prettier de package.json, vite.config.ts e do script PASS. Revisão independente do diff da correção: APPROVED, sem defeito impeditivo; o revisor não executou testes. A execução do workflow no Git será verificada após o push. A revisão por agente na CI e a configuração de proteção da branch continuam pendentes; T014 segue aberta.
 
