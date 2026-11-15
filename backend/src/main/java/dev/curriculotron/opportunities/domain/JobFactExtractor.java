@@ -34,7 +34,6 @@ public final class JobFactExtractor {
   private static final Pattern ROLE_FOCUS =
       Pattern.compile(
           "\\b(java|back ?-?end|full ?-?stack|software engineer|engenheir[oa](\\(a\\))? de software)\\b");
-  private static final Pattern JAVA = Pattern.compile("\\bjava\\b");
   private static final Map<String, List<String>> REGION_CITIES =
       Map.of(
           "rm porto alegre",
@@ -73,10 +72,7 @@ public final class JobFactExtractor {
           .find()) stack.add(keyword);
     }
 
-    boolean role =
-        DEV_ROLE.matcher(nTitle).find()
-            && ROLE_FOCUS.matcher(nTitle).find()
-            && JAVA.matcher(nTitle + "\n" + nText).find();
+    boolean role = DEV_ROLE.matcher(nTitle).find() && ROLE_FOCUS.matcher(nTitle).find();
 
     String workMode = workMode(nLocation);
     if (workMode.equals("unknown")) workMode = workMode(nTitle);
