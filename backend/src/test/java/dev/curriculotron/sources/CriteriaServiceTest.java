@@ -17,6 +17,7 @@ class CriteriaServiceTest extends AppTestBase {
   @Autowired CriteriaStore store;
   @Autowired dev.curriculotron.shared.persistence.WriteExecutor writer;
   @Autowired dev.curriculotron.shared.AppClock clock;
+  @Autowired dev.curriculotron.opportunities.application.CompatibilityStatusService status;
 
   @Test
   void shouldRollbackCriteriaWhenInvalidationCannotBeSaved() {
@@ -25,7 +26,7 @@ class CriteriaServiceTest extends AppTestBase {
     org.mockito.Mockito.doThrow(new IllegalStateException("storage failure"))
         .when(failingRefresh)
         .save(org.mockito.ArgumentMatchers.any());
-    var failing = new CriteriaService(store, failingRefresh, writer, clock);
+    var failing = new CriteriaService(store, failingRefresh, writer, clock, status);
     var changed =
         new CriteriaDocument(
             initial.version(),
