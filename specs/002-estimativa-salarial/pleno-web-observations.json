@@ -1,0 +1,65 @@
+﻿[
+    {
+        "id":  null,
+        "criteria":  {
+                         "contractType":  "unknown",
+                         "company":  "CWI Software",
+                         "seniority":  "pleno",
+                         "role":  "desenvolvedor java",
+                         "location":  "brasil",
+                         "workMode":  "unknown"
+                     },
+        "originalMin":  6000,
+        "originalMax":  7000,
+        "originalUnit":  "monthly",
+        "currency":  "BRL",
+        "sampleSize":  25,
+        "source":  "Glassdoor",
+        "sourceUrl":  "https://www.glassdoor.com.br/Sal%C3%A1rio/CWI-Software-Desenvolvedor-Java-Pleno-Sal%C3%A1rios-E489537_D_KO13,37.htm",
+        "consultedAt":  "2026-11-15T04:03:58.9806860+00:00",
+        "sourceUpdatedOn":  "2025-11-05",
+        "evidence":  "Consulta assistida pela ferramenta web: empresa CWI Software, Desenvolvedor Java Pleno; componente base mensal 6000–7000 BRL. Regime não informado. Componentes variáveis não incluídos."
+    },
+    {
+        "id":  null,
+        "criteria":  {
+                         "contractType":  "unknown",
+                         "company":  "Act Digital",
+                         "seniority":  "pleno",
+                         "role":  "desenvolvedor java",
+                         "location":  "brasil",
+                         "workMode":  "unknown"
+                     },
+        "originalMin":  7000,
+        "originalMax":  9000,
+        "originalUnit":  "monthly",
+        "currency":  "BRL",
+        "sampleSize":  6,
+        "source":  "Glassdoor",
+        "sourceUrl":  "https://www.glassdoor.com.br/Sal%C3%A1rio/Act-Digital-Desenvolvedor-Java-Pleno-Sal%C3%A1rios-E8896386_D_KO12,36.htm",
+        "consultedAt":  "2026-11-15T04:03:58.9806860+00:00",
+        "sourceUpdatedOn":  "2025-12-12",
+        "evidence":  "Consulta assistida pela ferramenta web: empresa Act Digital, Desenvolvedor Java Pleno; componente base mensal 7000–9000 BRL. Regime não informado. Componentes variáveis não incluídos."
+    },
+    {
+        "id":  null,
+        "criteria":  {
+                         "contractType":  "unknown",
+                         "company":  "Stefanini",
+                         "seniority":  "pleno",
+                         "role":  "desenvolvedor java",
+                         "location":  "brasil",
+                         "workMode":  "unknown"
+                     },
+        "originalMin":  5000,
+        "originalMax":  7000,
+        "originalUnit":  "monthly",
+        "currency":  "BRL",
+        "sampleSize":  39,
+        "source":  "Glassdoor",
+        "sourceUrl":  "https://www.glassdoor.com.br/Sal%C3%A1rio/Stefanini-Desenvolvedor-Java-Pleno-Brasil-Sal%C3%A1rios-EJI_IE716148.0,9_KO10,34_IL.35,41_IN36.htm?payPeriod=MONTHLY",
+        "consultedAt":  "2026-11-15T04:03:58.9806860+00:00",
+        "sourceUpdatedOn":  "2025-04-06",
+        "evidence":  "Consulta assistida pela ferramenta web: empresa Stefanini, Desenvolvedor Java Pleno; componente base mensal 5000–7000 BRL. Regime não informado. Componentes variáveis não incluídos."
+    }
+]

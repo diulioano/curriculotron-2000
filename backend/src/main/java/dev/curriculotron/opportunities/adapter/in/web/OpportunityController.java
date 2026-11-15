@@ -3,62 +3,63 @@ package dev.curriculotron.opportunities.adapter.in.web;
 import dev.curriculotron.audit.application.IntegrationStatusService;
 import dev.curriculotron.opportunities.application.OpportunityService;
 import dev.curriculotron.opportunities.application.port.out.OpportunitySourceRepository;
+import dev.curriculotron.opportunities.domain.Opportunity;
+import dev.curriculotron.salary.application.SalaryEstimateService;
 import dev.curriculotron.shared.AppClock;
 import dev.curriculotron.shared.web.ApiException;
+import dev.curriculotron.shared.web.ApiListResponse;
+import dev.curriculotron.sources.PublicationStore;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.NoSuchElementException;
 import org.springframework.web.bind.annotation.*;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.json.JsonMapper;
 
 @RestController
 @RequestMapping("/api/opportunities")
 public class OpportunityController {
-  @org.springframework.beans.factory.annotation.Autowired
-  private dev.curriculotron.sources.PublicationStore publications;
-
   private final OpportunityService jobs;
   private final OpportunitySourceRepository sources;
   private final IntegrationStatusService status;
   private final AppClock clock;
   private final OpportunitySummaries summaries;
-  private final JsonMapper json = JsonMapper.builder().build();
+  private final SalaryEstimateService salary;
+  private final PublicationStore publications;
 
   public OpportunityController(
       OpportunityService jobs,
       OpportunitySourceRepository sources,
       IntegrationStatusService status,
       AppClock clock,
-      OpportunitySummaries summaries) {
+      OpportunitySummaries summaries,
+      SalaryEstimateService salary,
+      PublicationStore publications) {
     this.jobs = jobs;
     this.summaries = summaries;
     this.sources = sources;
     this.status = status;
     this.clock = clock;
+    this.salary = salary;
+    this.publications = publications;
   }
 
   @GetMapping
-  public Map<String, Object> list(
+  public ApiListResponse<OpportunitySummary> list(
       @RequestParam(defaultValue = "selection") String list,
       @RequestParam(required = false) LocalDate date) {
     try {
-      var result = new LinkedHashMap<String, Object>();
-      result.put("items", summaries.of(jobs.list(list, date == null ? clock.localDate() : date)));
-      result.put("dataAsOf", status.latestSuccess().orElse(null));
-      return result;
+      return new ApiListResponse<>(
+          summaries.of(jobs.list(list, date == null ? clock.localDate() : date)),
+          status.latestSuccess().map(java.time.Instant::toString).orElse(null));
     } catch (IllegalArgumentException e) {
       throw ApiException.badRequest("invalid_list", "Lista inválida.");
     }
   }
 
   @GetMapping("/{id}")
-  public Map<String, Object> detail(@PathVariable String id) {
+  public OpportunityDetailResponse detail(@PathVariable String id) {
     try {
       var job = jobs.get(id);
-      Map<String, Object> result =
-          json.convertValue(job, new TypeReference<LinkedHashMap<String, Object>>() {});
-      result.put("sources", sources.forOpportunity(id));
-      result.put("publishedAt", publications.find(id));
+      var summary = summaries.of(job);
       var missing = new ArrayList<String>();
       if (job.salary() == null) missing.add("Salário a confirmar");
       if (job.workMode().equals("unknown")) missing.add("Modalidade a confirmar");
@@ -66,8 +67,27 @@ public class OpportunityController {
       if (job.location() == null || job.location().isBlank())
         missing.add("Localização a confirmar");
       if (job.companyName().equals("Empresa a confirmar")) missing.add("Empresa a confirmar");
-      result.put("missing", missing);
-      return result;
+      return new OpportunityDetailResponse(
+          summary.id(),
+          summary.title(),
+          summary.companyName(),
+          summary.location(),
+          summary.workMode(),
+          summary.contractType(),
+          summary.salary(),
+          summary.fitReasons(),
+          summary.userDecision(),
+          summary.availability(),
+          summary.deadlineAt(),
+          summary.publishedAt(),
+          summary.source(),
+          summary.companyTier(),
+          summary.salaryReference(),
+          summary.glassdoorUrl(),
+          job.facts(),
+          job.inferred(),
+          missing,
+          sources.forOpportunity(id));
     } catch (NoSuchElementException e) {
       throw ApiException.notFound("Vaga não encontrada.");
     }
@@ -76,7 +96,7 @@ public class OpportunityController {
   public record ManualRequest(String url, String text) {}
 
   @PostMapping("/manual")
-  public Object manual(@RequestBody ManualRequest request) {
+  public Opportunity manual(@RequestBody ManualRequest request) {
     try {
       return jobs.manual(request.url(), request.text());
     } catch (IllegalArgumentException e) {

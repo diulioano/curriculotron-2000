@@ -1,0 +1,26 @@
+﻿{
+    "collectedAt":  "2026-11-15T03:50:42.5297089+00:00",
+    "collectionMethod":  "assistant_web_tool",
+    "source":  "Glassdoor",
+    "sourceUrl":  "https://www.glassdoor.com.br/Sal%C3%A1rio/CWI-Software-Desenvolvedor-Java-Brasil-Sal%C3%A1rios-EJI_IE489537.0,12_KO13,31_IL.32,38_IN36.htm?payPeriod=MONTHLY",
+    "company":  "CWI Software",
+    "companySourceId":  "489537",
+    "role":  "Desenvolvedor Java",
+    "location":  "Brasil",
+    "seniority":  null,
+    "contractType":  null,
+    "currency":  "BRL",
+    "unit":  "monthly",
+    "displayedBaseMin":  4000,
+    "displayedBaseMax":  8000,
+    "displayedBaseCentral":  6000,
+    "sourceUpdatedOn":  "2026-09-09",
+    "displayedSubmittedSalaries":  148,
+    "eligibleForAutomaticMatching":  false,
+    "limitations":  [
+                        "Regime e senioridade não identificados.",
+                        "Página apresenta faixa total de 4000–9000 no texto e componentes variáveis inconsistentes; não combinar com faixa base.",
+                        "148 salários informados na seção Sobre nossos dados; escopo estatístico exato não confirmado."
+                    ],
+    "validation":  "Empresa e cargo confirmados no título e conteúdo da página específica."
+}

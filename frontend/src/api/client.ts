@@ -18,6 +18,7 @@ export class ApiError extends Error {
 }
 
 export interface SessionInfo {
+  authMode?: 'local' | 'password';
   authenticated: boolean;
   setupRequired: boolean;
   csrfToken: string | null;

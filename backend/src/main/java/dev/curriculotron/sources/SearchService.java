@@ -14,9 +14,10 @@ import dev.curriculotron.orchestration.domain.*;
 import dev.curriculotron.shared.*;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.concurrent.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.task.TaskRejectedException;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 /**
@@ -25,7 +26,10 @@ import org.springframework.stereotype.Service;
  * IntegrationStatus(source:<id>)}; partial results never claim full coverage.
  */
 @Service
-public class SearchService implements RoutineHandler, AutoCloseable {
+public class SearchService implements RoutineHandler {
+  @org.springframework.beans.factory.annotation.Autowired(required = false)
+  private dev.curriculotron.salary.application.SalaryEstimateService salary;
+
   private static final Logger log = LoggerFactory.getLogger(SearchService.class);
 
   private final ConfiguredSourceRepository boards;
@@ -41,7 +45,7 @@ public class SearchService implements RoutineHandler, AutoCloseable {
   private final JobFactExtractor extractor = new JobFactExtractor();
   private final ObjectiveFilter filter = new ObjectiveFilter();
   private final RuleBasedRanker ranker = new RuleBasedRanker();
-  private final ExecutorService executor = Executors.newSingleThreadExecutor();
+  private final ThreadPoolTaskExecutor executor;
 
   public SearchService(
       ConfiguredSourceRepository boards,
@@ -52,7 +56,9 @@ public class SearchService implements RoutineHandler, AutoCloseable {
       DedupeService dedupe,
       OpportunityRepository jobs,
       DailySelectionService selections,
-      AppClock clock) {
+      AppClock clock,
+      @org.springframework.beans.factory.annotation.Qualifier("searchTaskExecutor")
+          ThreadPoolTaskExecutor executor) {
     this.boards = boards;
     this.criteria = criteria;
     this.sources = sources;
@@ -62,6 +68,7 @@ public class SearchService implements RoutineHandler, AutoCloseable {
     this.jobs = jobs;
     this.selections = selections;
     this.clock = clock;
+    this.executor = executor;
   }
 
   public String submit(String key, TaskRunTrigger trigger) {
@@ -70,7 +77,14 @@ public class SearchService implements RoutineHandler, AutoCloseable {
 
   public String submit(String key, TaskRunTrigger trigger, SearchWindow window) {
     var created = tasks.createOrGet(NewTaskRun.system("search", trigger, key));
-    if (created.created()) executor.submit(() -> execute(created.run().id(), window));
+    if (created.created()) {
+      try {
+        executor.execute(() -> execute(created.run().id(), window));
+      } catch (TaskRejectedException rejected) {
+        tasks.fail(created.run().id(), "Capacidade de busca esgotada. Tente novamente.");
+        log.warn("Busca rejeitada por capacidade taskRunId={}", created.run().id());
+      }
+    }
     return created.run().id();
   }
 
@@ -117,6 +131,11 @@ public class SearchService implements RoutineHandler, AutoCloseable {
           }
           status.recordSuccess("source:" + source, String.join(" ", result.limitations()));
         } catch (Exception e) {
+          if (Thread.currentThread().isInterrupted()) {
+            tasks.pause(
+                id, PauseReason.source_unavailable, "Busca interrompida durante a consulta.");
+            return;
+          }
           log.warn("Fonte {} falhou: {}", source, e.getClass().getSimpleName());
           failed.add(source);
           status.recordFailure(
@@ -127,6 +146,7 @@ public class SearchService implements RoutineHandler, AutoCloseable {
         tasks.recordSources(id, consulted, failed);
       }
       selections.selectMatchingToday(eligible::contains);
+      if (salary != null) salary.enrichIds(eligible, id);
       if (failed.size() == consulted.size())
         tasks.pause(id, PauseReason.source_unavailable, "Nenhuma fonte respondeu.");
       else tasks.complete(id);
@@ -184,9 +204,5 @@ public class SearchService implements RoutineHandler, AutoCloseable {
 
   public void run(Routine routine, LocalDate date, String key) {
     submit(key, TaskRunTrigger.routine);
-  }
-
-  public void close() {
-    executor.shutdown();
   }
 }

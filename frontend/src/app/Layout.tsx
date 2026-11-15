@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, NavLink, Outlet } from 'react-router';
-import { logout } from '../api/client';
+import { logout, type SessionInfo } from '../api/client';
 import { panel } from '../api/panel';
 import { Landscape } from '../components/Landscape';
 import { Logo } from '../components/Logo';
@@ -40,6 +40,7 @@ const FOOTER = [
     links: [
       { to: '/atividades', label: 'Atividades' },
       { to: '/integracoes', label: 'Integrações' },
+      { to: '/referencias-salariais', label: 'Referências salariais' },
       { to: '/perfil', label: 'Perfil' },
     ],
   },
@@ -47,6 +48,7 @@ const FOOTER = [
 
 export function Layout() {
   const queryClient = useQueryClient();
+  const localMode = queryClient.getQueryData<SessionInfo>(['session'])?.authMode === 'local';
   const exit = useMutation({
     mutationFn: logout,
     onSettled: () => queryClient.clear(),
@@ -86,6 +88,7 @@ export function Layout() {
             <button
               type="button"
               className="navlink navbutton"
+              style={localMode ? { display: 'none' } : undefined}
               onClick={() => exit.mutate()}
               disabled={exit.isPending}
             >
@@ -172,6 +175,7 @@ export function Layout() {
                       <button
                         type="button"
                         className="footer-exit"
+                        style={localMode ? { display: 'none' } : undefined}
                         onClick={() => exit.mutate()}
                         disabled={exit.isPending}
                       >

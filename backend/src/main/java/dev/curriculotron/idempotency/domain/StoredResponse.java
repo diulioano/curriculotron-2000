@@ -10,10 +10,14 @@ public record StoredResponse(
     int status,
     String contentType,
     byte[] body,
+    String requestFingerprint,
     Instant createdAt) {
 
   /** A mesma chave só vale para a mesma operação. */
-  public boolean matches(String method, String path) {
-    return this.method.equals(method) && this.path.equals(path);
+  public boolean matches(String method, String path, String requestFingerprint) {
+    return this.method.equals(method)
+        && this.path.equals(path)
+        && this.requestFingerprint != null
+        && this.requestFingerprint.equals(requestFingerprint);
   }
 }

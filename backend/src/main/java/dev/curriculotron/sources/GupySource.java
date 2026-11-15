@@ -69,6 +69,7 @@ public class GupySource implements JobSource {
           List.of(
               "Fonte restrita: lista pública da página Gupy, sem descrição completa; requisitos, salário e contrato exigem confirmação no link."));
     } catch (Exception e) {
+      if (e instanceof InterruptedException) Thread.currentThread().interrupt();
       return SourceResult.failed(source, e);
     }
   }

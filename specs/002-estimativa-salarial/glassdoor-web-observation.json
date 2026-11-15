@@ -1,0 +1,24 @@
+﻿{
+    "source":  "Glassdoor",
+    "sourceUrl":  "https://www.glassdoor.com.br/Sal%C3%A1rios/desenvolvedor-java-sal%C3%A1rio-SRCH_KO0,18.htm",
+    "collectedAt":  "2026-11-15T03:24:45.6569436+00:00",
+    "collectionMethod":  "assistant_web_tool",
+    "role":  "Desenvolvedor Java",
+    "location":  "Brasil",
+    "seniority":  null,
+    "contractType":  null,
+    "currency":  "BRL",
+    "unit":  "monthly",
+    "compensationType":  "base",
+    "min":  4000,
+    "max":  8000,
+    "central":  6000,
+    "sampleSize":  null,
+    "eligibleForAutomaticMatching":  false,
+    "limitations":  [
+                        "Regime e senioridade não identificados na faixa agregada.",
+                        "50 salários exibidos na lista não comprovam amostra usada na faixa agregada.",
+                        "Acesso da ferramenta web não comprova acesso direto do aplicativo local."
+                    ],
+    "evidence":  "Base: R$ 4 mil - R$ 8 mil/mês; R$ 6 mil/mês salário base médio."
+}

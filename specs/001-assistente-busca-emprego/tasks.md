@@ -100,7 +100,7 @@ description: "Task list — Assistente pessoal de busca de emprego"
 - [x] T033 [P] [US1] Teste: 15 compatíveis ⇒ 10 na seleção e 5 na secundária; 3 fortes + 7 fracas ⇒ só 3; buscas manuais no mesmo dia nunca passam de 10 em `BT/opportunities/DailySelectionServiceTest.java` (US1-1, US1-2, SC-003)
 - [X] T034 [P] [US1] Teste: vagas repetidas por `(source, external_id)`/URL canônica, descartadas e com candidatura não reaparecem; identidade fraca gera `OpportunityMatchCandidate` sem fusão em `BT/opportunities/DedupeServiceTest.java` (US1-3, D-09)
 - [x] T035 [P] [US1] Teste dos filtros objetivos: CLT < R$ 6.000 ou PJ < R$ 9.000 explícitos fora da seleção principal; salário ausente entra como "a confirmar"; faixa que cruza o mínimo gera pendência; `salary_unit` ambíguo não é convertido em `BT/opportunities/ObjectiveFilterTest.java` (RB-002, RB-003)
-- [ ] T036 [P] [US1] Teste e2e J1: seleção, detalhe com "salário a confirmar", inferência separada, fonte, link, data; descartar; página inicial com prazos destacados em 360 e 1280 px em `E2E/j1-review.spec.ts` — implementado; falta só o destaque de prazos, que depende de US3
+- [x] T036 [P] [US1] Teste e2e J1: seleção, detalhe com "salário a confirmar", inferência separada, fonte, link, data; descartar; página inicial com prazos destacados em 360 e 1280 px em `E2E/j1-review.spec.ts` — validado junto à J3 com próxima ação real de candidatura
 
 ### Implementation (US1)
 
@@ -160,16 +160,16 @@ description: "Task list — Assistente pessoal de busca de emprego"
 
 ### Tests (US3)
 
-- [ ] T063 [P] [US3] Teste: nenhuma rota cria candidatura por clique; `POST …/applied` cria `Application(confirmation_origin=manual)` e segundo envio retorna `409`; tempo sem resposta não altera status em `BT/applications/ApplicationServiceTest.java` (US3-1, US3-2, US3-4)
+- [x] T063 [P] [US3] Teste: nenhuma rota cria candidatura por clique; `POST …/applied` cria `Application(confirmation_origin=manual)` e segundo envio retorna `409`; tempo sem resposta não altera status em `BT/applications/ApplicationServiceTest.java` (US3-1, US3-2, US3-4)
 - [ ] T064 [P] [US3] Teste: correção manual cria `StatusChange(author=user)` e evidência automática conflitante posterior gera `ReviewItem(kind=conflict)` sem sobrescrever em `BT/applications/StatusHistoryTest.java` (US3-3, D-09)
-- [ ] T065 [P] [US3] Teste e2e J3 em `E2E/j3-applications.spec.ts`
+- [x] T065 [P] [US3] Teste e2e J3 em `E2E/j3-applications.spec.ts`
 
 ### Implementation (US3)
 
-- [ ] T066 [US3] Criar migração `application` (`opportunity_id` unique; `status ∈ submitted_awaiting, contact_received, interview, offer, closed_rejected, withdrawn`; `due_precision ∈ exact, date_only, ambiguous`), `status_change` append-only, `evidence` (`kind ∈ mail, user_action, source_page`), `review_item` (`kind ∈ ambiguous_mail, dedupe_candidate, conflict, bot_config, salary_ambiguous`) em `MIG/V9__applications.sql`
+- [x] T066 [US3] Criar migração `application` (`opportunity_id` unique; `status ∈ submitted_awaiting, contact_received, interview, offer, closed_rejected, withdrawn`; `due_precision ∈ exact, date_only, ambiguous`), `status_change` append-only, `evidence` (`kind ∈ mail, user_action, source_page`), `review_item` (`kind ∈ ambiguous_mail, dedupe_candidate, conflict, bot_config, salary_ambiguous`) em `MIG/V9__applications.sql`
 - [ ] T067 [US3] Implementar `ApplicationService` (criação manual marca `opportunity.user_decision=applied`; mudança `author=bot:*` exige `evidence_id`) em `B/applications/ApplicationService.java` (FR-011)
 - [ ] T068 [P] [US3] Implementar `ReviewQueueService` e rotas `GET /api/review-items`, `POST /api/review-items/{id}/resolve` em `B/applications/ReviewQueueService.java` e `B/applications/ReviewController.java`
-- [ ] T069 [US3] Implementar rotas `POST /api/opportunities/{id}/applied`, `GET /api/applications…`, `POST …/status`, `POST …/next-action` em `B/applications/ApplicationController.java`
+- [x] T069 [US3] Implementar rotas `POST /api/opportunities/{id}/applied`, `GET /api/applications…`, `POST …/status`, `POST …/next-action` em `B/applications/ApplicationController.java`
 - [ ] T070 [US3] Implementar verificador de afirmações de materiais: toda afirmação precisa de `profileFactId` com `origin ∈ documented, declared`; caso contrário, sinalizar em `B/applications/ClaimChecker.java` (US3-5, RB-006)
 - [x] T071 [P] [US3] Criar páginas Candidaturas, Detalhe (histórico com autor/evidência, correção) e Revisão em `F/pages/Applications.tsx`, `F/pages/ApplicationDetail.tsx`, `F/pages/ReviewQueue.tsx`
 
@@ -380,3 +380,11 @@ T038/T046/T047 concluídas após conferência com `contracts/panel-api.md`. Os t
 T036 implementada em `frontend/tests/e2e/j1-review.spec.ts`: 8 cenários passaram (4 em 360 px e 4 em 1280 px) contra o app real. `scripts/e2e-backend.mjs` gera o build do frontend e o jar e sobe o app em um diretório descartável (`backend/build/e2e-home`), só com HTTP em 127.0.0.1 e agendador desligado, sem acessar portais reais. Os testes semeiam o SQLite via `node:sqlite` (`tests/e2e/support/seed.ts`). Cobertos: seleção com motivos, detalhe com "salário a confirmar", fatos separados das inferências, fonte, link e data, descartar/restaurar, lista secundária e entrada manual. **T036 continua aberta só pelo item "prazos destacados na página inicial"**: os prazos vêm de candidaturas (US3), que ainda não existem no backend. O botão "Me candidatei" chama `/applied`, também de US3. `playwright.frontend.config.ts` agora substitui o `webServer` em vez de somar ao do app real.
 
 Validação: `gradlew spotlessApply test check` passou. No frontend passaram eslint, tsc, vitest (23 testes), `test:frontend` (32 testes) e J1 e2e (8 testes). Capturas manuais de Início e Detalhe em 360/1280 px sem rolagem horizontal.
+
+## Incremento: candidaturas manuais e prazos (2026-11-14)
+
+Concluídas T063, T065, T066 e T069. A migração V9 acrescenta candidaturas, evidências, histórico append-only e estrutura da fila de revisão. As rotas reais permitem confirmação manual, lista/detalhe, correção de etapa com motivo e próxima ação com prazo. A confirmação é atômica com a decisão da vaga, recusa duplicatas e remove a vaga das recomendações. O início usa as próximas ações persistidas, por ordem de prazo, sem alterar etapas por tempo decorrido. T036 concluída: os destaques de prazo foram verificados na jornada J3 em 360/1280 px.
+
+T067 parcialmente implementada: fluxo manual pronto; aplicação de mudanças automáticas com evidência e tratamento de conflitos ainda pendentes junto a T064/T068. O banco já recusa histórico de bot sem evidência. T070 (verificação de afirmações) permanece pendente. O gate OpenBot continua pendente; nenhuma integração foi declarada validada.
+
+Validação: backend `gradlew test check` passou; frontend eslint e Vitest (23 testes) passaram; build TypeScript/Vite e J1/J3 no app isolado passaram (10 cenários). Ajustadas as bordas decorativas dos botões para não criar rolagem horizontal e a exibição dos motivos no celular. Nenhuma consulta a portais reais ou uso de dados da instalação pessoal nos testes.

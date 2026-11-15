@@ -27,6 +27,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 class SessionController {
 
+  @org.springframework.beans.factory.annotation.Autowired private LocalAccess local;
+
   private final LoginService login;
   private final SecurityContextRepository contextRepository;
   private final CsrfTokenRepository csrfRepository;
@@ -50,7 +52,10 @@ class SessionController {
   SessionResponse session(HttpServletRequest request) {
     CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
     return new SessionResponse(
-        isAuthenticated(), !login.isSetupDone(), token == null ? null : token.getToken());
+        isAuthenticated(),
+        !local.enabled() && !login.isSetupDone(),
+        token == null ? null : token.getToken(),
+        local.enabled() ? "local" : "password");
   }
 
   @PostMapping("/session")

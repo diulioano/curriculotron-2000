@@ -33,6 +33,15 @@ export function seedOpportunities(jobs: SeedJob[]) {
   try {
     db.exec('PRAGMA foreign_keys = ON');
     db.exec('BEGIN IMMEDIATE');
+    // Reset only the disposable e2e database, including append-only history.
+    db.exec('DROP TRIGGER status_change_no_delete');
+    db.exec('DELETE FROM status_change');
+    db.exec(
+      "CREATE TRIGGER status_change_no_delete BEFORE DELETE ON status_change BEGIN SELECT RAISE(ABORT, 'status_change is append-only'); END",
+    );
+    db.exec('DELETE FROM application');
+    db.exec('DELETE FROM evidence');
+    db.exec('DELETE FROM review_item');
     for (const table of [
       'daily_selection',
       'opportunity_match_candidate',
@@ -133,5 +142,7 @@ export async function expectNoHorizontalOverflow(page: Page) {
       .map((el) => `${el.tagName}.${el.className}`),
   );
   expect(overflowing).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+    .toBe(true);
 }

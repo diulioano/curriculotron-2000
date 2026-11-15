@@ -13,6 +13,31 @@ function json(status: number, body: unknown) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('App', () => {
+  it('modo local entra sem senha e oculta sair', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string) =>
+        json(
+          200,
+          path === '/api/session'
+            ? { authenticated: true, setupRequired: false, csrfToken: 't', authMode: 'local' }
+            : {
+                dataAsOf: null,
+                selectionToday: { count: 0, limit: 10, items: [] },
+                integrations: [],
+                applicationsWithNextActions: [],
+                mailNeedingAttention: [],
+                reviewQueueCount: 0,
+                missedRoutines: [],
+              },
+        ),
+      ),
+    );
+    render(<App queryClient={createQueryClient()} />);
+    expect(await screen.findByRole('navigation', { name: 'Principal' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Entrar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sair' })).not.toBeInTheDocument();
+  });
   it('sem sessão mostra a tela de entrada', async () => {
     vi.stubGlobal(
       'fetch',

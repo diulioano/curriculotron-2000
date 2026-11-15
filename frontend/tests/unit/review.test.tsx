@@ -92,6 +92,9 @@ it('troca listas e permite recuperar uma vaga descartada', async () => {
 
 it('falha da API nunca aparece como lista vazia', async () => {
   mount('/vagas', true);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Esta área ainda não está disponível');
+  expect(await screen.findByText(/Esta área ainda não está disponível/)).toHaveAttribute(
+    'role',
+    'alert',
+  );
   expect(screen.queryByText('Nenhuma vaga nesta lista.')).not.toBeInTheDocument();
 });

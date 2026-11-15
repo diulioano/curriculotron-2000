@@ -1,4 +1,4 @@
-﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { NavLink } from 'react-router';
 import { api } from '../api/client';
@@ -162,7 +162,7 @@ export function Profile() {
         success={reimport.isSuccess && 'Currículo reimportado.'}
       />
       <QueryState pending={query.isPending} error={query.error} retry={query.refetch} />
-      {query.data && <ProfileForm key={query.data.id} data={query.data} />}
+      {query.data && <ProfileForm key={JSON.stringify(query.data.facts)} data={query.data} />}
     </div>
   );
 }

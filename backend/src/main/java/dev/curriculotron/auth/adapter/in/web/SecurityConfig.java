@@ -73,7 +73,8 @@ public class SecurityConfig {
       HttpSecurity http,
       SecurityContextRepository contextRepository,
       CsrfTokenRepository csrfRepository,
-      IdempotencyFilter idempotencyFilter)
+      IdempotencyFilter idempotencyFilter,
+      LocalAccess local)
       throws Exception {
     http.csrf(csrf ->
             csrf.csrfTokenRepository(csrfRepository)
@@ -112,6 +113,21 @@ public class SecurityConfig {
                 .referrerPolicy(
                     r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
         .addFilterAfter(idempotencyFilter, AuthorizationFilter.class);
+    if (local.enabled()) {
+      http.addFilterBefore(
+          new org.springframework.web.filter.OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(
+                jakarta.servlet.http.HttpServletRequest req,
+                jakarta.servlet.http.HttpServletResponse res,
+                jakarta.servlet.FilterChain chain)
+                throws jakarta.servlet.ServletException, IOException {
+              local.authenticate();
+              chain.doFilter(req, res);
+            }
+          },
+          org.springframework.security.web.authentication.AnonymousAuthenticationFilter.class);
+    }
     return http.build();
   }
 

@@ -1,0 +1,9 @@
+# Uso pessoal neste computador; ativar explicitamente com --spring.profiles.active=local.
+server:
+  address: 127.0.0.1
+  ssl:
+    enabled: false
+  servlet:
+    session:
+      cookie:
+        secure: false

@@ -32,12 +32,20 @@ public class IdempotencyService {
 
   /** Grava a resposta e descarta as expiradas. Se a chave já existe, mantém a primeira. */
   public void remember(
-      String key, String method, String path, int status, String contentType, byte[] body) {
+      String key,
+      String method,
+      String path,
+      int status,
+      String contentType,
+      byte[] body,
+      String requestFingerprint) {
     Instant now = clock.now();
     writer.run(() -> {
       repository.deleteCreatedBefore(now.minus(RETENTION));
       if (!repository.exists(key)) {
-        repository.save(new StoredResponse(key, method, path, status, contentType, body, now));
+        repository.save(
+            new StoredResponse(
+                key, method, path, status, contentType, body, requestFingerprint, now));
       }
     });
   }

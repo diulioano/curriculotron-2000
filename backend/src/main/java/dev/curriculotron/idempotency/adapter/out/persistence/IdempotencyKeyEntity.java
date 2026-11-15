@@ -28,6 +28,9 @@ class IdempotencyKeyEntity extends AssignedIdEntity<String> {
   @Column(name = "response_body")
   private byte[] responseBody;
 
+  @Column(name = "request_fingerprint")
+  private String requestFingerprint;
+
   @Column(name = "created_at")
   private Instant createdAt;
 
@@ -41,12 +44,14 @@ class IdempotencyKeyEntity extends AssignedIdEntity<String> {
     e.status = r.status();
     e.contentType = r.contentType();
     e.responseBody = r.body();
+    e.requestFingerprint = r.requestFingerprint();
     e.createdAt = r.createdAt();
     return e;
   }
 
   StoredResponse toDomain() {
-    return new StoredResponse(key, method, path, status, contentType, responseBody, createdAt);
+    return new StoredResponse(
+        key, method, path, status, contentType, responseBody, requestFingerprint, createdAt);
   }
 
   @Override

@@ -7,7 +7,7 @@ Regras transversais:
 - Todas as rotas exceto `POST /api/session` e `GET /api/health` exigem sessão válida; sem sessão ⇒ `401` com corpo sem dados privados (NFR-001). Arquivos estáticos da SPA não contêm dados.
 - Mutações exigem cabeçalho `X-CSRF-Token` obtido em `GET /api/session`.
 - Respostas de erro: `{ "error": { "code": "<slug>", "message": "<pt-BR>" } }`. Nunca incluir tokens, caminhos de credenciais ou stack traces.
-- Toda mutação aceita `Idempotency-Key` opcional; repetição com a mesma chave devolve o mesmo resultado.
+- Mutação que exige idempotência declara `Idempotency-Key`; a mesma chave, método, rota e corpo devolve a resposta original. Reutilizar a chave com outro método, rota ou corpo retorna `422 idempotency_key_reused`. O corpo tem limite de 5 MiB. Chaves legadas sem fingerprint, durante a janela de retenção, são recusadas com esse mesmo 422, pois não é possível verificar o corpo original.
 - Datas em ISO-8601 com offset.
 
 ## Sessão

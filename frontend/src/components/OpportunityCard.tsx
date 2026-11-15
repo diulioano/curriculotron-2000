@@ -5,6 +5,7 @@ import { post, type Opportunity } from '../api/panel';
 import { companyColor, companyInitials, salaryText } from '../lib/opportunity';
 import { formatAsOf, ZONE } from '../lib/time';
 import { MutationFeedback } from './Panel';
+import { SalaryEstimate } from './SalaryEstimate';
 
 const MODES = {
   remote: 'Remoto',
@@ -116,6 +117,12 @@ export function OpportunityCard({
         <p className="job-salary-missing hatch mono">
           <span>salário a confirmar</span>
         </p>
+      )}
+      <SalaryEstimate item={item} />
+      {item.glassdoorUrl && (
+        <a href={item.glassdoorUrl} target="_blank" rel="noopener noreferrer" className="small">
+          Ver no Glassdoor ↗
+        </a>
       )}
       {item.fitReasons.length > 0 && <p className="job-reason">“{item.fitReasons[0]}”</p>}
       {item.deadlineAt && (

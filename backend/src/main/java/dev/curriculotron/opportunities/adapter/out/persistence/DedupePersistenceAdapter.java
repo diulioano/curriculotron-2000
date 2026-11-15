@@ -2,7 +2,6 @@ package dev.curriculotron.opportunities.adapter.out.persistence;
 
 import dev.curriculotron.opportunities.application.port.out.DedupeRepository;
 import dev.curriculotron.shared.Ids;
-import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -10,90 +9,76 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 class DedupePersistenceAdapter implements DedupeRepository {
-  private final EntityManager em;
+  private final ExternalIdentityJpaRepository externalIdentities;
+  private final UrlIdentityJpaRepository urlIdentities;
+  private final OpportunitySourceJpaRepository sources;
+  private final OpportunityJpaRepository opportunities;
+  private final OpportunityMatchCandidateJpaRepository candidates;
 
-  DedupePersistenceAdapter(EntityManager em) {
-    this.em = em;
+  DedupePersistenceAdapter(
+      ExternalIdentityJpaRepository externalIdentities,
+      UrlIdentityJpaRepository urlIdentities,
+      OpportunitySourceJpaRepository sources,
+      OpportunityJpaRepository opportunities,
+      OpportunityMatchCandidateJpaRepository candidates) {
+    this.externalIdentities = externalIdentities;
+    this.urlIdentities = urlIdentities;
+    this.sources = sources;
+    this.opportunities = opportunities;
+    this.candidates = candidates;
   }
 
+  @Override
   public Optional<String> byExternalId(String source, String externalId) {
     if (externalId == null) return Optional.empty();
-    return em.createNativeQuery(
-            "SELECT opportunity_id FROM opportunity_external_identity WHERE source=:source AND external_id=:external",
-            String.class)
-        .setParameter("source", source)
-        .setParameter("external", externalId)
-        .getResultStream()
-        .findFirst();
+    return externalIdentities
+        .findById(new ExternalIdentityId(source, externalId))
+        .map(ExternalIdentityEntity::opportunityId);
   }
 
+  @Override
   public Optional<String> byUrl(String url) {
-    return em.createNativeQuery(
-            "SELECT opportunity_id FROM opportunity_url_identity WHERE canonical_url=:url",
-            String.class)
-        .setParameter("url", url)
-        .getResultStream()
-        .findFirst();
+    return urlIdentities.findById(url).map(UrlIdentityEntity::opportunityId);
   }
 
+  @Override
   public void attach(
       String id, String source, String externalId, String url, String excerpt, Instant at) {
-    em.createNativeQuery(
-            "INSERT INTO opportunity_url_identity(canonical_url,opportunity_id) VALUES (:url,:id) ON CONFLICT DO NOTHING")
-        .setParameter("url", url)
-        .setParameter("id", id)
-        .executeUpdate();
-    if (externalId != null) {
-      em.createNativeQuery(
-              "INSERT INTO opportunity_external_identity(source,external_id,opportunity_id) VALUES (:source,:external,:id) ON CONFLICT DO NOTHING")
-          .setParameter("source", source)
-          .setParameter("external", externalId)
-          .setParameter("id", id)
-          .executeUpdate();
+    if (!urlIdentities.existsById(url)) {
+      urlIdentities.save(new UrlIdentityEntity(url, id));
     }
-    // An existing identity keeps its original evidence and user decision intact.
-    em.createNativeQuery(
-            """
-            INSERT INTO opportunity_source(id,opportunity_id,source,external_id,canonical_url,fetched_at,raw_excerpt,created_at,updated_at)
-            VALUES (:id,:opportunity,:source,:external,:url,:at,:excerpt,:at,:at)
-            ON CONFLICT DO NOTHING
-            """)
-        .setParameter("id", Ids.newId())
-        .setParameter("opportunity", id)
-        .setParameter("source", source)
-        .setParameter("external", externalId)
-        .setParameter("url", url)
-        .setParameter("at", at.toString())
-        .setParameter("excerpt", excerpt)
-        .executeUpdate();
+    if (externalId != null
+        && !externalIdentities.existsById(new ExternalIdentityId(source, externalId))) {
+      externalIdentities.save(new ExternalIdentityEntity(source, externalId, id));
+    }
+
+    boolean sourceAlreadyStored =
+        sources.existsByCanonicalUrl(url)
+            || (externalId != null && sources.existsBySourceAndExternalId(source, externalId));
+    if (!sourceAlreadyStored) {
+      String instant = at.toString();
+      sources.save(
+          new OpportunitySourceEntity(Ids.newId(), id, source, externalId, url, instant, excerpt));
+    }
   }
 
+  @Override
   public List<String> similar(String id) {
-    return em.createNativeQuery(
-            """
-            SELECT b.id FROM opportunity a JOIN opportunity b
-            ON lower(trim(a.title))=lower(trim(b.title)) AND lower(trim(a.company_name))=lower(trim(b.company_name))
-            AND lower(trim(coalesce(a.location,'')))=lower(trim(coalesce(b.location,'')))
-            WHERE a.id=:id AND b.id<>a.id
-            AND a.merged_into IS NULL AND b.merged_into IS NULL
-            """,
-            String.class)
-        .setParameter("id", id)
-        .getResultList();
+    return opportunities.findSimilar(id);
   }
 
+  @Override
   public void suggest(String a, String b, Instant at) {
     String first = a.compareTo(b) < 0 ? a : b;
     String second = a.compareTo(b) < 0 ? b : a;
-    em.createNativeQuery(
-            """
-            INSERT INTO opportunity_match_candidate(opportunity_a,opportunity_b,signal,state,created_at,updated_at)
-            VALUES (:a,:b,'Identidades conflitantes ou título e empresa coincidentes','open',:at,:at)
-            ON CONFLICT DO NOTHING
-            """)
-        .setParameter("a", first)
-        .setParameter("b", second)
-        .setParameter("at", at.toString())
-        .executeUpdate();
+    var id = new OpportunityMatchCandidateId(first, second);
+    if (!candidates.existsById(id)) {
+      candidates.save(
+          new OpportunityMatchCandidateEntity(
+              first,
+              second,
+              "Identidades conflitantes ou título e empresa coincidentes",
+              at.toString()));
+    }
   }
 }

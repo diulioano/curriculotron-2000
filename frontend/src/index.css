@@ -250,6 +250,8 @@ h3 {
 /* ---- Botões ---- */
 
 .btn {
+  position: relative;
+  isolation: isolate;
   font-family: var(--font-hand);
   font-weight: 700;
   font-size: 16px;

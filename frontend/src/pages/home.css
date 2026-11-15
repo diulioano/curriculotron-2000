@@ -286,8 +286,7 @@
   .jobs-flow .job-card:first-child .job-title {
     font-size: 24px !important;
   }
-  .jobs-flow .company-tier,
-  .jobs-flow .job-reason {
+  .jobs-flow .company-tier {
     display: none;
   }
   .jobs-flow .card-actions {

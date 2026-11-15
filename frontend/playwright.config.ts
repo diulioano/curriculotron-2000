@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,7 +11,13 @@ const external = process.env.CURRICULOTRON_URL;
 const port = process.env.CURRICULOTRON_E2E_PORT ?? '18443';
 const home =
   process.env.CURRICULOTRON_E2E_HOME ??
-  join(fileURLToPath(new URL('.', import.meta.url)), '..', 'backend', 'build', 'e2e-home');
+  join(
+    fileURLToPath(new URL('.', import.meta.url)),
+    '..',
+    'backend',
+    'build',
+    `curriculotron-e2e-${process.pid}-${randomUUID()}`,
+  );
 if (!external) process.env.CURRICULOTRON_E2E_DB ??= join(home, 'data', 'curriculotron.db');
 const baseURL = external ?? `http://127.0.0.1:${port}`;
 

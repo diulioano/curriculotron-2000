@@ -61,6 +61,7 @@ public class CwiCareersSource implements JobSource {
           List.of(
               "Fonte restrita: cartões da página pública da CWI; requisitos, salário e contrato exigem confirmação no link."));
     } catch (Exception e) {
+      if (e instanceof InterruptedException) Thread.currentThread().interrupt();
       return SourceResult.failed(source, e);
     }
   }

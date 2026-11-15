@@ -1,76 +1,65 @@
 package dev.curriculotron.opportunities.adapter.out.persistence;
 
 import dev.curriculotron.opportunities.application.port.out.MatchCandidateRepository;
-import jakarta.persistence.EntityManager;
 import java.util.List;
 import org.springframework.stereotype.Repository;
 
 @Repository
 class MatchCandidatePersistenceAdapter implements MatchCandidateRepository {
-  private final EntityManager em;
+  private final OpportunityMatchCandidateJpaRepository candidates;
+  private final OpportunityJpaRepository opportunities;
+  private final OpportunitySourceJpaRepository sources;
+  private final UrlIdentityJpaRepository urlIdentities;
+  private final ExternalIdentityJpaRepository externalIdentities;
 
-  MatchCandidatePersistenceAdapter(EntityManager em) {
-    this.em = em;
+  MatchCandidatePersistenceAdapter(
+      OpportunityMatchCandidateJpaRepository candidates,
+      OpportunityJpaRepository opportunities,
+      OpportunitySourceJpaRepository sources,
+      UrlIdentityJpaRepository urlIdentities,
+      ExternalIdentityJpaRepository externalIdentities) {
+    this.candidates = candidates;
+    this.opportunities = opportunities;
+    this.sources = sources;
+    this.urlIdentities = urlIdentities;
+    this.externalIdentities = externalIdentities;
   }
 
+  @Override
   public List<Candidate> open() {
-    List<?> rows =
-        em.createNativeQuery(
-                "SELECT opportunity_a,opportunity_b,signal FROM opportunity_match_candidate WHERE state='open' ORDER BY created_at,opportunity_a,opportunity_b")
-            .getResultList();
-    return rows.stream()
-        .map(row -> {
-          var r = (Object[]) row;
-          return new Candidate(r[0] + ":" + r[1], (String) r[0], (String) r[1], (String) r[2]);
-        })
+    return candidates.findByStateOrderByCreatedAtAscOpportunityAAscOpportunityBAsc("open").stream()
+        .map(candidate ->
+            new Candidate(
+                candidate.opportunityA() + ":" + candidate.opportunityB(),
+                candidate.opportunityA(),
+                candidate.opportunityB(),
+                candidate.signal()))
         .toList();
   }
 
+  @Override
   public boolean reject(String a, String b, String at) {
-    return em.createNativeQuery(
-                "UPDATE opportunity_match_candidate SET state='rejected',updated_at=:at WHERE opportunity_a=:a AND opportunity_b=:b AND state='open'")
-            .setParameter("a", a)
-            .setParameter("b", b)
-            .setParameter("at", at)
-            .executeUpdate()
-        == 1;
+    return candidates.reject(a, b, at) == 1;
   }
 
+  @Override
   public boolean merge(String a, String b, String at) {
-    int changed =
-        em.createNativeQuery(
-                "UPDATE opportunity_match_candidate SET state='merged_by_user',updated_at=:at WHERE opportunity_a=:a AND opportunity_b=:b AND state='open' AND NOT EXISTS (SELECT 1 FROM opportunity WHERE id IN (:a,:b) AND (merged_into IS NOT NULL OR user_decision='applied'))")
-            .setParameter("a", a)
-            .setParameter("b", b)
-            .setParameter("at", at)
-            .executeUpdate();
-    if (changed == 0) return false;
-    // Keep both records and daily selection slots as history; move source identities to the
-    // survivor.
-    em.createNativeQuery(
-            "UPDATE opportunity SET user_decision=CASE WHEN user_decision='discarded' OR (SELECT user_decision FROM opportunity WHERE id=:b)='discarded' THEN 'discarded' ELSE user_decision END,updated_at=:at WHERE id=:a")
-        .setParameter("a", a)
-        .setParameter("b", b)
-        .setParameter("at", at)
-        .executeUpdate();
-    em.createNativeQuery("UPDATE opportunity SET merged_into=:a,updated_at=:at WHERE id=:b")
-        .setParameter("a", a)
-        .setParameter("b", b)
-        .setParameter("at", at)
-        .executeUpdate();
-    for (String table :
-        List.of(
-            "opportunity_source", "opportunity_url_identity", "opportunity_external_identity")) {
-      em.createNativeQuery("UPDATE " + table + " SET opportunity_id=:a WHERE opportunity_id=:b")
-          .setParameter("a", a)
-          .setParameter("b", b)
-          .executeUpdate();
+    if (candidates.markMerged(a, b, at) == 0) return false;
+
+    var survivor = opportunities.findById(a).orElseThrow();
+    var merged = opportunities.findById(b).orElseThrow();
+    if ("discarded".equals(merged.userDecision()) || "discarded".equals(survivor.userDecision())) {
+      survivor.setDecision("discarded", at);
+    } else {
+      survivor.setDecision(survivor.userDecision(), at);
     }
-    em.createNativeQuery(
-            "UPDATE opportunity_match_candidate SET state='rejected',updated_at=:at WHERE state='open' AND (opportunity_a=:b OR opportunity_b=:b)")
-        .setParameter("at", at)
-        .setParameter("b", b)
-        .executeUpdate();
+    merged.mergeInto(a, at);
+    opportunities.saveAll(List.of(survivor, merged));
+
+    sources.moveToSurvivor(a, b);
+    urlIdentities.moveToSurvivor(a, b);
+    externalIdentities.moveToSurvivor(a, b);
+    candidates.rejectOpenForMerged(b, at);
     return true;
   }
 }

@@ -78,6 +78,7 @@ public class OracleRecruitingSource implements JobSource {
           List.of(
               "Listagem pública do portal de carreiras; descrição completa, salário e modalidade exigem confirmação no link."));
     } catch (Exception e) {
+      if (e instanceof InterruptedException) Thread.currentThread().interrupt();
       return SourceResult.failed(source, e);
     }
   }

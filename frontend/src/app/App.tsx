@@ -20,6 +20,7 @@ import { Activities } from '../pages/Activities';
 import { Profile, Criteria, Companies, DataPrivacy } from '../pages/Profile';
 import './panel.css';
 import { Login } from '../pages/Login';
+import { SalaryReferences } from '../pages/SalaryReferences';
 import { NotFound, Placeholder } from '../pages/Placeholder';
 import { Layout } from './Layout';
 import { createQueryClient, SESSION_KEY } from './queryClient';
@@ -71,6 +72,7 @@ function SessionGate() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="vagas" element={<Opportunities />} />
+        <Route path="referencias-salariais" element={<SalaryReferences />} />
         <Route path="vagas/:id" element={<OpportunityDetail />} />
         <Route path="candidaturas" element={<Applications />} />
         <Route path="candidaturas/:id" element={<ApplicationDetail />} />

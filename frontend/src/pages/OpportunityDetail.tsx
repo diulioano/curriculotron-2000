@@ -1,11 +1,13 @@
 ﻿import type { CSSProperties } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
-import { panel, post, type OpportunityDetail as Detail } from '../api/panel';
+import { panel, post, type OpportunityDetail as Detail, type TaskRun } from '../api/panel';
 import { Deadline } from '../components/Deadline';
+import { SalaryEstimate } from '../components/SalaryEstimate';
 import { MutationFeedback, QueryState } from '../components/Panel';
 import { companyColor, companyInitials, salaryText } from '../lib/opportunity';
 import { formatAsOf } from '../lib/time';
+import { api } from '../api/client';
 import './opportunity-detail.css';
 
 const MODES = { remote: 'Remoto', hybrid: 'Híbrido', onsite: 'Presencial' };
@@ -29,6 +31,31 @@ export function OpportunityDetail() {
     },
   });
   const item = query.data;
+  const refresh = useMutation({
+    mutationFn: async () => {
+      const result = await post<{ taskRunId: string }>(
+        `/api/opportunities/${encodeURIComponent(id)}/salary-estimate/refresh`,
+      );
+      for (let attempt = 0; attempt < 60; attempt++) {
+        const task = await api<{ state: TaskRun['state']; errorSummary?: string }>(
+          `/api/task-runs/${result.taskRunId}`,
+        );
+        if (task.state === 'completed') return;
+        if (['failed', 'paused'].includes(task.state))
+          throw new Error(
+            task.errorSummary ||
+              'Pesquisa assistida necessária. A referência anterior foi mantida.',
+          );
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      throw new Error('A consulta continua em andamento. Confira as atividades.');
+    },
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: ['opportunity', id] });
+      void client.invalidateQueries({ queryKey: ['opportunities'] });
+      void client.invalidateQueries({ queryKey: ['home'] });
+    },
+  });
   const color = item ? companyColor(item.companyName) : undefined;
   return (
     <div className="job-detail" style={{ '--c': color } as CSSProperties}>
@@ -96,6 +123,26 @@ export function OpportunityDetail() {
                   </section>
                   <section className="req-inferred dsh">
                     <h3>Inferências</h3>
+                    <SalaryEstimate item={item} detail />
+                    <Link to="/referencias-salariais">
+                      Consultar referências por empresa e cargo
+                    </Link>
+                    {!item.salary && (
+                      <button
+                        className="btn bt bt-sec"
+                        disabled={refresh.isPending}
+                        onClick={() => refresh.mutate()}
+                      >
+                        {refresh.isPending ? 'Atualizando…' : 'Atualizar estimativa'}
+                      </button>
+                    )}
+                    {refresh.error && <p role="alert">{refresh.error.message}</p>}
+                    {refresh.isSuccess && <p role="status">Estimativa atualizada.</p>}
+                    {item.glassdoorUrl && (
+                      <a href={item.glassdoorUrl} target="_blank" rel="noopener noreferrer">
+                        Ver no Glassdoor ↗
+                      </a>
+                    )}
                     {item.inferred.length ? (
                       <ul>
                         {item.inferred.map((text, i) => (
@@ -140,7 +187,7 @@ export function OpportunityDetail() {
                 </button>
                 <button
                   className="btn bt bt-sec dsh"
-                  disabled={action.isPending}
+                  disabled={action.isPending || item.userDecision === 'applied'}
                   onClick={() =>
                     action.mutate(item.userDecision === 'discarded' ? 'restore' : 'discard')
                   }

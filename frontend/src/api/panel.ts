@@ -6,6 +6,12 @@ export interface ListResult<T> {
   dataAsOf: string | null;
 }
 export interface Opportunity {
+  salaryReference?: {
+    status: 'available' | 'unavailable' | 'non_monthly';
+    reason?: string;
+    estimate?: SalaryObservation;
+  } | null;
+  glassdoorUrl?: string;
   id: string;
   title: string;
   companyName: string;
@@ -26,6 +32,32 @@ export interface Opportunity {
   source?: OpportunitySource | null;
   /** Nível da empresa, quando o serviço informar. */
   companyTier?: 'priority' | 'suggested' | null;
+}
+export interface SalaryObservation {
+  id: string;
+  criteria: {
+    company?: string;
+    role: string;
+    seniority: string;
+    location: string;
+    workMode: string;
+    contractType: string;
+  };
+  monthlyMin: number | null;
+  monthlyMax: number | null;
+  originalMin: number;
+  originalMax: number;
+  originalUnit: string;
+  currency: string;
+  convertedFromAnnual: boolean;
+  sampleSize: number | null;
+  source: string;
+  sourceUrl: string;
+  consultedAt: string;
+  sourceUpdatedOn?: string | null;
+  expiresAt: string;
+  stale: boolean;
+  scope: 'company' | 'market';
 }
 export interface OpportunitySource {
   source: string;

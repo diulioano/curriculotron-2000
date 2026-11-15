@@ -2,37 +2,49 @@ package dev.curriculotron.opportunities.adapter.in.web;
 
 import dev.curriculotron.opportunities.application.port.out.OpportunitySourceRepository;
 import dev.curriculotron.opportunities.domain.Opportunity;
-import java.util.*;
+import dev.curriculotron.salary.application.SalaryEstimateService;
+import dev.curriculotron.sources.PublicationStore;
+import java.util.List;
 import org.springframework.stereotype.Component;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.json.JsonMapper;
 
-/**
- * Resumo de vaga para listas e página inicial: a vaga mais a fonte consultada por último (`source:
- * {source, url, fetchedAt} | null`), para o cartão mostrar de onde veio e quando.
- */
+/** Maps the opportunity domain model to the stable list DTO consumed by the panel. */
 @Component
 public class OpportunitySummaries {
-  @org.springframework.beans.factory.annotation.Autowired
-  private dev.curriculotron.sources.PublicationStore publications;
-
   private final OpportunitySourceRepository sources;
-  private final JsonMapper json = JsonMapper.builder().build();
+  private final SalaryEstimateService salary;
+  private final PublicationStore publications;
 
-  public OpportunitySummaries(OpportunitySourceRepository sources) {
+  public OpportunitySummaries(
+      OpportunitySourceRepository sources,
+      SalaryEstimateService salary,
+      PublicationStore publications) {
     this.sources = sources;
+    this.salary = salary;
+    this.publications = publications;
   }
 
-  public List<Map<String, Object>> of(List<Opportunity> items) {
+  public List<OpportunitySummary> of(List<Opportunity> items) {
     return items.stream().map(this::of).toList();
   }
 
-  public Map<String, Object> of(Opportunity item) {
-    Map<String, Object> result =
-        json.convertValue(item, new TypeReference<LinkedHashMap<String, Object>>() {});
-    result.put("publishedAt", publications.find(item.id()));
-    var found = sources.forOpportunity(item.id());
-    result.put("source", found.isEmpty() ? null : found.getLast());
-    return result;
+  public OpportunitySummary of(Opportunity item) {
+    List<OpportunitySourceRepository.Source> found = sources.forOpportunity(item.id());
+    return new OpportunitySummary(
+        item.id(),
+        item.title(),
+        item.companyName(),
+        item.location(),
+        item.workMode(),
+        item.contractType(),
+        item.salary(),
+        item.fitReasons(),
+        item.userDecision(),
+        item.availability(),
+        null,
+        publications.find(item.id()),
+        found.isEmpty() ? null : found.getLast(),
+        null,
+        salary.reference(item),
+        salary.glassdoorUrl(item));
   }
 }

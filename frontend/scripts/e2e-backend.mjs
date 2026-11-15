@@ -2,13 +2,17 @@
 // Diretório de dados próprio e descartável, HTTP só em 127.0.0.1, agendador desligado:
 // nenhuma rotina dispara busca em portais reais. Os testes semeiam o SQLite diretamente.
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, rmSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const frontend = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const backend = resolve(frontend, '../backend');
-const home = process.env.CURRICULOTRON_E2E_HOME ?? join(backend, 'build', 'e2e-home');
+const buildDirectory = resolve(backend, 'build');
+const home = resolve(
+  process.env.CURRICULOTRON_E2E_HOME ??
+    join(buildDirectory, `curriculotron-e2e-${process.pid}-${Date.now()}`),
+);
 const port = process.env.CURRICULOTRON_E2E_PORT ?? '18443';
 const windows = process.platform === 'win32';
 const java = process.env.JAVA_HOME
@@ -42,7 +46,30 @@ if (!jar) {
   process.exit(1);
 }
 
-rmSync(home, { recursive: true, force: true });
+const relativeHome = relative(buildDirectory, home);
+if (
+  !relativeHome ||
+  relativeHome === '..' ||
+  relativeHome.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`) ||
+  isAbsolute(relativeHome) ||
+  !basename(home).startsWith('curriculotron-e2e-')
+) {
+  throw new Error('CURRICULOTRON_E2E_HOME deve ser uma pasta exclusiva dentro de backend/build.');
+}
+if (existsSync(home)) {
+  throw new Error('CURRICULOTRON_E2E_HOME já existe; use uma pasta nova e descartável.');
+}
+mkdirSync(buildDirectory, { recursive: true });
+mkdirSync(home);
+const ownershipMarker = join(home, '.curriculotron-e2e-owner');
+writeFileSync(ownershipMarker, String(process.pid), { flag: 'wx' });
+
+function cleanOwnedHome() {
+  if (!existsSync(ownershipMarker)) return;
+  if (readFileSync(ownershipMarker, 'utf8') !== String(process.pid)) return;
+  rmSync(home, { recursive: true, force: true });
+}
+
 const app = spawn(
   java,
   [
@@ -67,4 +94,7 @@ const app = spawn(
 const stop = () => app.kill();
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
-app.on('exit', (code) => process.exit(code ?? 0));
+app.on('exit', (code) => {
+  cleanOwnedHome();
+  process.exit(code ?? 0);
+});

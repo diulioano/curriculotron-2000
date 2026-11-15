@@ -15,6 +15,9 @@ import dev.curriculotron.support.AppTestBase;
 import dev.curriculotron.support.TestSession;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -116,5 +119,62 @@ class FoundationIntegrationTest extends AppTestBase {
                 .content("{}"))
         .andExpect(status().isUnprocessableContent())
         .andExpect(jsonPath("$.error.code").value("idempotency_key_reused"));
+  }
+
+  @Test
+  void requestsConcorrentesComMesmaChaveExecutamUmaVezEConflitamComOutroPayload() throws Exception {
+    TestSession.setup(mvc, TestSession.PASSWORD);
+    TestSession logged = TestSession.login(mvc, TestSession.PASSWORD);
+    String title = "ConcorrÃªncia idempotente " + UUID.randomUUID();
+    String key = "manual-race-" + UUID.randomUUID();
+    var start = new CountDownLatch(1);
+    var executor = Executors.newFixedThreadPool(2);
+    try {
+      var request =
+          (java.util.concurrent.Callable<org.springframework.test.web.servlet.MvcResult>)
+              () -> {
+                start.await();
+                return mvc.perform(
+                        post("/api/opportunities/manual")
+                            .session(logged.session())
+                            .header("X-CSRF-Token", logged.csrf())
+                            .header("Idempotency-Key", key)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"text\":\"" + title + "\"}"))
+                    .andReturn();
+              };
+      var first = executor.submit(request);
+      var second = executor.submit(request);
+      start.countDown();
+      var firstResponse = first.get();
+      var secondResponse = second.get();
+      assertThat(firstResponse.getResponse().getStatus()).isEqualTo(200);
+      assertThat(secondResponse.getResponse().getStatus()).isEqualTo(200);
+      String firstId =
+          com.jayway.jsonpath.JsonPath.read(
+              firstResponse.getResponse().getContentAsString(), "$.id");
+      String secondId =
+          com.jayway.jsonpath.JsonPath.read(
+              secondResponse.getResponse().getContentAsString(), "$.id");
+      assertThat(secondId).isEqualTo(firstId);
+      assertThat(
+              jdbc.sql("SELECT count(*) FROM opportunity WHERE title = ?")
+                  .param(title)
+                  .query(Long.class)
+                  .single())
+          .isEqualTo(1L);
+
+      mvc.perform(
+              post("/api/opportunities/manual")
+                  .session(logged.session())
+                  .header("X-CSRF-Token", logged.csrf())
+                  .header("Idempotency-Key", key)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"text\":\"outro payload\"}"))
+          .andExpect(status().isUnprocessableContent())
+          .andExpect(jsonPath("$.error.code").value("idempotency_key_reused"));
+    } finally {
+      executor.shutdownNow();
+    }
   }
 }

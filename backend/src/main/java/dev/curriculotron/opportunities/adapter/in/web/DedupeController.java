@@ -7,7 +7,8 @@ import dev.curriculotron.opportunities.application.port.out.MatchCandidateReposi
 import dev.curriculotron.shared.AppClock;
 import dev.curriculotron.shared.persistence.WriteExecutor;
 import dev.curriculotron.shared.web.ApiException;
-import java.util.*;
+import dev.curriculotron.shared.web.ApiListResponse;
+import java.util.List;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,39 +19,38 @@ public class DedupeController {
   private final WriteExecutor writer;
   private final AppClock clock;
   private final ActivityLogService activity;
+  private final OpportunitySummaries summaries;
+
+  public record DedupeCandidateSummary(
+      String id, OpportunitySummary opportunityA, OpportunitySummary opportunityB, String signal) {}
 
   public DedupeController(
       MatchCandidateRepository candidates,
       OpportunityService jobs,
       WriteExecutor writer,
       AppClock clock,
-      ActivityLogService activity) {
+      ActivityLogService activity,
+      OpportunitySummaries summaries) {
     this.candidates = candidates;
     this.jobs = jobs;
     this.writer = writer;
     this.clock = clock;
     this.activity = activity;
+    this.summaries = summaries;
   }
 
   @GetMapping
-  public Object list() {
-    var result = new LinkedHashMap<String, Object>();
-    result.put(
-        "items",
+  public ApiListResponse<DedupeCandidateSummary> list() {
+    List<DedupeCandidateSummary> items =
         candidates.open().stream()
-            .map(c ->
-                Map.of(
-                    "id",
-                    c.id(),
-                    "opportunityA",
-                    jobs.get(c.opportunityA()),
-                    "opportunityB",
-                    jobs.get(c.opportunityB()),
-                    "signal",
-                    c.signal()))
-            .toList());
-    result.put("dataAsOf", null);
-    return result;
+            .map(candidate ->
+                new DedupeCandidateSummary(
+                    candidate.id(),
+                    summaries.of(jobs.get(candidate.opportunityA())),
+                    summaries.of(jobs.get(candidate.opportunityB())),
+                    candidate.signal()))
+            .toList();
+    return new ApiListResponse<>(items, null);
   }
 
   @PostMapping("/{id}/{action}")

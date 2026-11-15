@@ -75,6 +75,7 @@ public class AtsBoardSource implements JobSource {
           List.of(
               "Cobertura limitada ao board público configurado; salário e modalidade exigem confirmação."));
     } catch (Exception e) {
+      if (e instanceof InterruptedException) Thread.currentThread().interrupt();
       return SourceResult.failed(source, e);
     }
   }

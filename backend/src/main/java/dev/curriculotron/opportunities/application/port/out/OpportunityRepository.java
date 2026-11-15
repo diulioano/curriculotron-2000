@@ -9,6 +9,8 @@ public interface OpportunityRepository {
 
   List<Opportunity> discarded();
 
+  List<String> activeIds();
+
   String createManual(String text, String at);
 
   /** Persists a vacancy found in a configured source with its literal facts and objective rank. */
