@@ -1,5 +1,6 @@
 ﻿import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { mockCompanyColors } from './support/company-colors.js';
 
 const job = {
   id: 'job-1',
@@ -61,6 +62,83 @@ const home = {
   missedRoutines: [],
 };
 const list = (items: unknown[]) => ({ items, dataAsOf: null });
+
+test('cores: marcas e alternativas nos destaques dos cards', async ({ page }) => {
+  const state = await mockCompanyColors(page);
+  const expected = [
+    '#0070F2',
+    '#21C25E',
+    '#005CA9',
+    '#FF8A00',
+    '#F70773',
+    '#FA5A50',
+    '#EC7000',
+    '#2F7D12',
+    '#0070F2',
+    '#0369A1',
+    '#6B6B73',
+    '#6B6B73',
+    '#0F766E',
+  ];
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  for (const path of [
+    '/',
+    '/vagas?list=selection',
+    '/vagas?list=secondary',
+    '/vagas?list=discarded',
+  ]) {
+    state.items.forEach((item) => {
+      item.userDecision = path.includes('discarded') ? 'discarded' : 'none';
+    });
+    await page.goto(path);
+    await expect(page.locator('.job-card')).toHaveCount(expected.length);
+    const colors = await page.locator('.job-card').evaluateAll((cards) =>
+      cards.map((card) => {
+        const style = getComputedStyle(card);
+        const mark = card.querySelector('.company-mark span');
+        const hatch = card.querySelector('.company-mark');
+        return {
+          color: style.getPropertyValue('--c').trim(),
+          left: getComputedStyle(card, '::before').borderLeftColor,
+          top: getComputedStyle(card, '::after').borderTopColor,
+          mark: mark && getComputedStyle(mark).borderTopColor,
+          hatch: hatch && getComputedStyle(hatch).backgroundImage,
+        };
+      }),
+    );
+    expect(colors.map((entry) => entry.color)).toEqual(expected);
+    for (const entry of colors) {
+      const rgb = `rgb(${entry.color
+        .slice(1)
+        .match(/../g)
+        ?.map((hex) => parseInt(hex, 16))
+        .join(', ')})`;
+      expect(entry.left).toBe(rgb);
+      expect(entry.top).toBe(rgb);
+      expect(entry.mark).toBe(rgb);
+      expect(entry.hatch).toContain(rgb);
+    }
+  }
+  await page.goto('/vagas/color-2');
+  await expect(page.locator('.job-detail')).toHaveCSS('--c', '#005CA9');
+  expect(requests.every((url) => new URL(url).origin === new URL(page.url()).origin)).toBe(true);
+  expect(
+    requests
+      .map((url) => new URL(url).pathname)
+      .filter(
+        (path) =>
+          path.startsWith('/api/') &&
+          ![
+            '/api/session',
+            '/api/home',
+            '/api/settings/search-routine',
+            '/api/opportunities',
+            '/api/opportunities/color-2',
+          ].includes(path),
+      ),
+  ).toEqual([]);
+});
 
 test.beforeEach(async ({ page }) => {
   await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
