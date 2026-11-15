@@ -46,11 +46,28 @@ public final class RuleBasedRanker {
   }
 
   public Result rank(Input job, Criteria criteria) {
+    return rank(
+        job,
+        criteria,
+        contains(criteria.roles(), job.role()),
+        job.requirementFacts().stream().anyMatch(fact -> contains(criteria.stack(), fact)),
+        false);
+  }
+
+  public Result rank(Input job, Criteria criteria, CompatibilityEvaluator.Result compatibility) {
+    return rank(
+        job,
+        criteria,
+        compatibility.role().status() == CompatibilityAssessment.Axis.matched,
+        compatibility.technology().status() == CompatibilityAssessment.Axis.matched
+            || compatibility.technology().status() == CompatibilityAssessment.Axis.unrestricted,
+        compatibility.technology().status() == CompatibilityAssessment.Axis.unrestricted);
+  }
+
+  private Result rank(
+      Input job, Criteria criteria, boolean role, boolean stack, boolean unrestricted) {
     var reasons = new ArrayList<String>();
     reasons.add(job.salary().reason());
-    boolean role = contains(criteria.roles(), job.role());
-    boolean stack =
-        job.requirementFacts().stream().anyMatch(fact -> contains(criteria.stack(), fact));
     boolean remote = "remote".equals(job.workMode());
     boolean hybrid =
         "hybrid".equals(job.workMode()) && contains(criteria.hybridRegions(), job.region());
@@ -62,7 +79,11 @@ public final class RuleBasedRanker {
                 && job.juniorJustification() != null
                 && !job.juniorJustification().isBlank());
     if (role) reasons.add("Função compatível com os critérios de busca.");
-    if (stack) reasons.add("Tecnologia explícita na vaga coincide com os critérios de busca.");
+    if (stack)
+      reasons.add(
+          unrestricted
+              ? "Critérios sem restrição tecnológica."
+              : "Tecnologia explícita na vaga coincide com os critérios de busca.");
     if (remote) reasons.add("Trabalho remoto informado.");
     else if (hybrid) reasons.add("Híbrido em região configurada; avaliar deslocamento.");
     else reasons.add("Localização ou modalidade exige revisão do usuário.");
