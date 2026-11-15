@@ -61,3 +61,13 @@ Cobertura medida com @vitest/coverage-v8 5.1.0, versão conferida no registro np
 
 O resultado da implementação local atende aos cenários descritos; entrega completa de US permanece dependente dos gates Git de T014. Revisão consolidada T013 APPROVED por qa; revisor executou58 testes/lint/build/diff-check e conferiu recorte e escopo. Nenhum QA-declined: o único MINOR foi aceito e corrigido. Sem hooks after_implement (extensions.yml ausente).
 
+## T014 — entrega Git parcial e gates pendentes
+
+Commits delimitados T001–T013 enviados para origin/feature/US-003-company-card-colors. PR rascunho aberto: https://github.com/diulioano/curriculotron-2000/pull/4 . Execução frontend-ci iniciada no Git e observada em andamento: https://github.com/diulioano/curriculotron-2000/actions/runs/43747439169 ; isto comprova início, não sucesso.
+
+Inspeção dos workflows e da API GitHub: frontend-ci executa npm ci --ignore-scripts, lint, testes e build; não executa esta suíte Playwright, cobertura ou revisão por agente. Backend-ci possui Sonar condicional. Repositório sem secrets cadastrados, inclusive SONAR_TOKEN e credencial de revisão. main protegida com uma aprovação obrigatória; resposta da proteção não listou checks obrigatórios. A proteção não foi alterada nesta demanda.
+
+T014 permanece desmarcada: não foi possível certificar a esteira obrigatória de revisão por agente no Git, Sonar e gates de cobertura. Não adicionar provedor pago nem prometer revisão automatizada sem credencial/configuração. A US não está declarada integralmente concluída e o PR não foi mergeado. São necessários configurar/revalidar esses gates antes da liberação. Revisão local por agentes não substitui execução no Git.
+
+Revisão qa APPROVED somente para o registro parcial de T014; tarefa permanece aberta e gates não certificados. Nenhum hook after_implement registrado (extensions.yml ausente).
+
