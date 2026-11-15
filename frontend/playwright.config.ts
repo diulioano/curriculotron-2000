@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 // os testes semeiam o banco em CURRICULOTRON_E2E_DB. Com CURRICULOTRON_URL, usa o app indicado
 // e as jornadas que dependem de semeadura são puladas.
 const external = process.env.CURRICULOTRON_URL;
+process.env.CURRICULOTRON_E2E_PASSWORD ??= `${randomUUID()}${randomUUID()}`;
 const port = process.env.CURRICULOTRON_E2E_PORT ?? '18443';
 const home =
   process.env.CURRICULOTRON_E2E_HOME ??

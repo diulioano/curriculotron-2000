@@ -50,7 +50,11 @@ function ReviewCard({ item }: { item: ReviewItem }) {
             />
           </div>
           <div>
-            <button className="btn bt-pri" disabled={save.isPending || !resolution.trim()}>
+            <button
+              type="submit"
+              className="btn bt-pri"
+              disabled={save.isPending || !resolution.trim()}
+            >
               Registrar resolução
             </button>
           </div>
