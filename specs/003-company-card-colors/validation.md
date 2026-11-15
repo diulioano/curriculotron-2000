@@ -15,3 +15,7 @@ Revisão T002: APPROVED por qa; revisor repetiu unidade29/lint/build e confirmou
 ## T003 — fixtures
 
 Fixtures de 13 vagas e API simulada stateful criadas. Lint/build e 29 testes PASS; format global conserva oito falhas anteriores. Revisão qa APPROVED; revisor executou eslint focado e tsc -b. Importação de DTO da aplicação evitada nas fixtures por incompatibilidade NodeNext transitiva preexistente; fixtures inferem seus tipos sem any.
+
+## T004 — resolução de cor
+
+TDD: 13 casos novos, cinco falhas antes da mudança e 13 PASS depois; suíte global 42/42, lint/build e Prettier dos arquivos tocados PASS. Cores prioritárias, Map exato, alias itau, grafite e hash da paleta implementados. Revisão qa APPROVED; revisor executou eslint dos arquivos e 13 testes focados.
