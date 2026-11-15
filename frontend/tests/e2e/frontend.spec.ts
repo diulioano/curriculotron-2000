@@ -1,5 +1,6 @@
 ﻿import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { mockCompanyColors } from './support/company-colors.js';
 
 const job = {
   id: 'job-1',
@@ -61,6 +62,198 @@ const home = {
   missedRoutines: [],
 };
 const list = (items: unknown[]) => ({ items, dataAsOf: null });
+
+test('cores: marcas e alternativas nos destaques dos cards', async ({ page }) => {
+  const state = await mockCompanyColors(page);
+  const expected = [
+    '#0070F2',
+    '#21C25E',
+    '#005CA9',
+    '#FF8A00',
+    '#F70773',
+    '#FA5A50',
+    '#EC7000',
+    '#2F7D12',
+    '#0070F2',
+    '#0369A1',
+    '#6B6B73',
+    '#6B6B73',
+    '#0F766E',
+  ];
+  const requests: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  for (const path of [
+    '/',
+    '/vagas?list=selection',
+    '/vagas?list=secondary',
+    '/vagas?list=discarded',
+  ]) {
+    state.items.forEach((item) => {
+      item.userDecision = path.includes('discarded') ? 'discarded' : 'none';
+    });
+    await page.goto(path);
+    await expect(page.locator('.job-card')).toHaveCount(expected.length);
+    const colors = await page.locator('.job-card').evaluateAll((cards) =>
+      cards.map((card) => {
+        const style = getComputedStyle(card);
+        const mark = card.querySelector('.company-mark span');
+        const hatch = card.querySelector('.company-mark');
+        return {
+          color: style.getPropertyValue('--c').trim(),
+          left: getComputedStyle(card, '::before').borderLeftColor,
+          top: getComputedStyle(card, '::after').borderTopColor,
+          mark: mark && getComputedStyle(mark).borderTopColor,
+          hatch: hatch && getComputedStyle(hatch).backgroundImage,
+        };
+      }),
+    );
+    expect(colors.map((entry) => entry.color)).toEqual(expected);
+    for (const entry of colors) {
+      const rgb = `rgb(${entry.color
+        .slice(1)
+        .match(/../g)
+        ?.map((hex) => parseInt(hex, 16))
+        .join(', ')})`;
+      expect(entry.left).toBe(rgb);
+      expect(entry.top).toBe(rgb);
+      expect(entry.mark).toBe(rgb);
+      expect(entry.hatch).toContain(rgb);
+    }
+  }
+  await page.goto('/vagas/color-2');
+  await expect(page.locator('.job-detail')).toHaveCSS('--c', '#005CA9');
+  expect(requests.every((url) => new URL(url).origin === new URL(page.url()).origin)).toBe(true);
+  expect(
+    requests
+      .map((url) => new URL(url).pathname)
+      .filter(
+        (path) =>
+          path.startsWith('/api/') &&
+          ![
+            '/api/session',
+            '/api/home',
+            '/api/settings/search-routine',
+            '/api/opportunities',
+            '/api/opportunities/color-2',
+          ].includes(path),
+      ),
+  ).toEqual([]);
+});
+
+test('cores: leitura, contraste, foco e ações em todas as empresas', async ({ page }) => {
+  const state = await mockCompanyColors(page);
+  for (const path of ['/', '/vagas', '/vagas?list=discarded']) {
+    state.items.forEach((item) => {
+      item.userDecision = path.includes('discarded') ? 'discarded' : 'none';
+    });
+    await page.goto(path);
+    await expect(page.locator('.job-card')).toHaveCount(13);
+    await page.evaluate(() => document.fonts.ready);
+    const visibleCards = page.locator('.job-card:visible');
+    const controls = visibleCards.locator('.job-title a, .card-actions button');
+    // Chegar a cada controle por Tab comprova sua presença na ordem de teclado.
+    {
+      for (let i = 0; i < (await controls.count()); i++) {
+        const control = controls.nth(i);
+        for (
+          let step = 0;
+          step < 100 && !(await control.evaluate((el) => el === document.activeElement));
+          step++
+        ) {
+          await page.keyboard.press('Tab');
+        }
+        await expect(control).toBeFocused();
+        await expect(control).toHaveCSS('outline-style', 'dashed');
+        await expect(control).toHaveCSS('outline-width', '3px');
+      }
+    }
+    if (path !== '/') {
+      await expect(page.getByText('Empresa não informada', { exact: true })).toHaveCount(2);
+      await expect(page.getByText('salário a confirmar', { exact: true })).toHaveCount(13);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    const textColors = await visibleCards.evaluateAll((cards) =>
+      cards.map((card) => ({
+        text: getComputedStyle(card.querySelector('.company-name') ?? card).color,
+        background: getComputedStyle(card).backgroundColor,
+        opacity: getComputedStyle(card).opacity,
+      })),
+    );
+    for (const style of textColors) {
+      expect(style.text).toBe('rgb(27, 27, 31)');
+      expect(style.background).toBe('rgb(255, 253, 246)');
+      expect(style.opacity).toBe('1');
+    }
+    if (path === '/' && page.viewportSize()?.width === 360) {
+      await expect(page.getByRole('link', { name: /Ver as outras/ })).toBeVisible();
+      await page.getByRole('link', { name: /Ver as outras/ }).click();
+      await expect(page.locator('.job-card:visible')).toHaveCount(13);
+    }
+  }
+  state.items.forEach((item) => {
+    item.userDecision = 'none';
+  });
+  await page.goto('/vagas');
+  const first = page.locator('.job-card').first();
+  await first.getByRole('button', { name: 'Me candidatei' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(first.getByRole('status')).toContainText('Candidatura registrada');
+  await first.getByRole('button', { name: 'Descartar' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.job-card')).toHaveCount(12);
+  await page.getByRole('link', { name: 'Descartadas', exact: true }).click();
+  await page.getByRole('button', { name: 'Restaurar' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Restaurar' })).toHaveCount(0);
+});
+
+test('cores: identidade estável ao navegar e alterar decisões', async ({ page, browser }) => {
+  const state = await mockCompanyColors(page);
+  const target = page
+    .locator('.job-card')
+    .filter({ has: page.getByRole('link', { name: 'Vaga color-0', exact: true }) });
+  for (const path of ['/', '/vagas?list=selection', '/vagas?list=secondary']) {
+    await page.goto(path);
+    await expect(target).toHaveCSS('--c', '#0070F2');
+  }
+  state.reversed = true;
+  state.subset = true;
+  await page.reload();
+  await expect(page.locator('.job-card')).toHaveCount(7);
+  await expect(target).toHaveCSS('--c', '#0070F2');
+  await page.reload();
+  await expect(target).toHaveCSS('--c', '#0070F2');
+  state.reversed = false;
+  state.subset = false;
+  await page.goto('/vagas');
+  await target.getByRole('button', { name: 'Descartar', exact: true }).click();
+  await expect(target).toHaveCount(0);
+  await page.getByRole('link', { name: 'Descartadas', exact: true }).click();
+  await expect(target).toHaveCSS('--c', '#0070F2');
+  await target.getByRole('button', { name: 'Restaurar' }).click();
+  await expect(target).toHaveCount(0);
+  await page.getByRole('link', { name: 'Seleção do dia', exact: true }).click();
+  await expect(target).toHaveCSS('--c', '#0070F2');
+  state.items[0].companyName = 'BV';
+  await page.reload();
+  await expect(target).toHaveCSS('--c', '#005CA9');
+  const context = await browser.newContext({ viewport: page.viewportSize() ?? undefined });
+  try {
+    const reopened = await context.newPage();
+    await mockCompanyColors(reopened, state);
+    await reopened.goto(new URL('/vagas', page.url()).href);
+    const reopenedCards = reopened.locator('.job-card');
+    await expect(reopenedCards.first()).toHaveCSS('--c', '#005CA9');
+    await expect(reopenedCards.nth(9)).toHaveCSS('--c', '#0369A1');
+  } finally {
+    await context.close();
+  }
+});
 
 test.beforeEach(async ({ page }) => {
   await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {

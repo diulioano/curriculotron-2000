@@ -19,23 +19,32 @@ export function salaryText(item: Opportunity): string | null {
   return `${text}${UNITS[salary.unit]}`;
 }
 
-/**
- * Cor por empresa (design/, "Padrões do rabisco"): só em traço, hachura e carimbo — o texto fica
- * sempre em tinta escura. Empresa sem marca conhecida usa grafite. Cores a conferir com o manual
- * de marca de cada empresa.
- */
-const BRANDS: [RegExp, string][] = [
-  [/^ita[uú]/i, '#EC7000'],
-  [/^sap\b/i, '#0070F2'],
-  [/^picpay/i, '#21C25E'],
-  [/^sicredi/i, '#2F7D12'],
-];
+/** Cor decorativa; textos e foco mantêm a tinta escura do tema. */
+const BRANDS = new Map<string, string>([
+  ['itaú', '#EC7000'],
+  ['itau', '#EC7000'],
+  ['sap', '#0070F2'],
+  ['picpay', '#21C25E'],
+  ['sicredi', '#2F7D12'],
+  ['bv', '#005CA9'], // Aproximação visual; não é um hex oficial confirmado.
+  ['cwi', '#FF8A00'],
+  ['db', '#F70773'],
+  ['ci&t', '#FA5A50'],
+]);
+// Ordem e hash são estáveis entre sessões; colisões são permitidas.
+const COMPANY_PALETTE = ['#475569', '#7C3AED', '#0F766E', '#B45309', '#BE185D', '#0369A1'];
 export const GRAPHITE = '#6B6B73';
-export function companyColor(name: string) {
-  const key = name.trim();
-  return BRANDS.find(([pattern]) => pattern.test(key))?.[1] ?? GRAPHITE;
+export function companyColor(name: string): string {
+  const key = name.trim().toLowerCase();
+  if (!key) return GRAPHITE;
+  const brand = BRANDS.get(key);
+  if (brand) return brand;
+  let hash = 0;
+  for (let index = 0; index < key.length; index++) {
+    hash = (31 * hash + key.charCodeAt(index)) >>> 0;
+  }
+  return COMPANY_PALETTE[hash % COMPANY_PALETTE.length];
 }
-
 /** "It" para Itaú, "S" para SAP: primeira palavra; siglas em maiúsculas ficam com uma letra. */
 export function companyInitials(name: string) {
   const word = name.trim().split(/\s+/)[0] || '?';

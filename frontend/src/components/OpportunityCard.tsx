@@ -95,7 +95,7 @@ export function OpportunityCard({
           <span>{companyInitials(item.companyName)}</span>
         </span>
         <span className="company-id">
-          <span className="company-name">{item.companyName}</span>
+          <span className="company-name">{item.companyName.trim() || 'Empresa não informada'}</span>
           {item.companyTier && <span className="company-tier mono">{TIERS[item.companyTier]}</span>}
         </span>
       </div>

@@ -2,6 +2,58 @@ import { render, screen } from '@testing-library/react';
 import { DataAsOf } from '../../src/components/DataAsOf';
 import { formatAsOf } from '../../src/lib/time';
 import { StatusBadge, type IntegrationState } from '../../src/components/StatusBadge';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router';
+import { OpportunityCard } from '../../src/components/OpportunityCard';
+import { colorJob } from '../e2e/support/company-colors';
+
+describe('identidade da empresa no card', () => {
+  function cards(names: string[]) {
+    return render(
+      <MemoryRouter>
+        <QueryClientProvider client={new QueryClient()}>
+          {names.map((name, index) => (
+            <OpportunityCard key={index} item={colorJob(name, `unit-${index}`)} />
+          ))}
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+  }
+
+  it('duas vagas da mesma empresa mantêm cor no próprio card e ações existentes', () => {
+    cards(['SAP', 'SAP', 'BV']);
+    const articles = screen.getAllByRole('article');
+    expect(articles.map((card) => card.style.getPropertyValue('--c'))).toEqual([
+      '#0070F2',
+      '#0070F2',
+      '#005CA9',
+    ]);
+    expect(screen.getAllByText('SAP')).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Me candidatei' })).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: 'Descartar' })).toHaveLength(3);
+  });
+
+  it.each(['', '   '])('empresa ausente %j tem rótulo, grafite e iniciais decorativas', (name) => {
+    cards([name]);
+    expect(screen.getByText('Empresa não informada')).toBeVisible();
+    expect(screen.getByRole('article').style.getPropertyValue('--c')).toBe('#6B6B73');
+    expect(screen.getByText('?').closest('[aria-hidden]')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('salário a confirmar')).toBeVisible();
+  });
+
+  it('card descartado mantém empresa por texto e ação de restauração', () => {
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={new QueryClient()}>
+          <OpportunityCard item={colorJob('BV')} discarded />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('BV')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Restaurar' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Descartar' })).not.toBeInTheDocument();
+  });
+});
 
 describe('StatusBadge (NFR-005: não depende de cor)', () => {
   it.each<[IntegrationState, string]>([
