@@ -26,7 +26,7 @@ Checks frontend após alterações de código: `npm test`, `npm run lint`, `npm 
 
 **Purpose**: garantir evidência de teste utilizável por todas as histórias.
 
-- [ ] T003 Preparar fixtures reutilizáveis em `frontend/tests/e2e/support/company-colors.ts` para seis prioritárias, Itaú/Sicredi, duas vagas da mesma empresa, desconhecida, vazia, espaços e prefixo semelhante; manter o contrato “`Opportunity.companyName: string`” e “null não faz parte do tipo atual e não será legitimado por cast”; expor respostas para Hoje/listas e estado de descarte/restauração/correção sem backend real, usando o padrão de simulação de `frontend/tests/e2e/frontend.spec.ts`.
+- [X] T003 Preparar fixtures reutilizáveis em `frontend/tests/e2e/support/company-colors.ts` para seis prioritárias, Itaú/Sicredi, duas vagas da mesma empresa, desconhecida, vazia, espaços e prefixo semelhante; manter o contrato “`Opportunity.companyName: string`” e “null não faz parte do tipo atual e não será legitimado por cast”; expor respostas para Hoje/listas e estado de descarte/restauração/correção sem backend real, usando o padrão de simulação de `frontend/tests/e2e/frontend.spec.ts`.
 
 **Checkpoint**: ambiente e fixtures prontos. Sem endpoint, coluna, migração ou biblioteca nova.
 
@@ -95,5 +95,6 @@ Entregar primeiro o MVP funcional US1, com testes e revisão. Completar US3 ante
 Cobertura: FR-001/003/004/007 em T004–T006; FR-006 em T004/T007; FR-008/010 em T007–T009; FR-002/005 em T004/T010–T012; FR-009 em T005/T006/T011; SC-001 em T006, SC-002 em T011/T012, SC-003/004 em T008/T009. T013 consolida a evidência.
 
 `before_tasks`/`after_tasks`: `.specify/extensions.yml` ausente na geração, portanto sem hooks registrados a executar. Nenhuma tarefa de implementação foi executada por esta geração documental.
+
 
 
