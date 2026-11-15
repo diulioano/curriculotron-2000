@@ -52,10 +52,18 @@ class DedupePersistenceAdapter implements DedupeRepository {
       externalIdentities.save(new ExternalIdentityEntity(source, externalId, id));
     }
 
-    boolean sourceAlreadyStored =
-        sources.existsByCanonicalUrl(url)
-            || (externalId != null && sources.existsBySourceAndExternalId(source, externalId));
-    if (!sourceAlreadyStored) {
+    var existing =
+        sources
+            .findByCanonicalUrl(url)
+            .or(() ->
+                externalId == null
+                    ? Optional.empty()
+                    : sources.findBySourceAndExternalId(source, externalId));
+    if (existing.isPresent()) {
+      var stored = existing.get();
+      if (!"manual".equals(source)) stored.refresh(at.toString());
+      sources.saveAndFlush(stored);
+    } else {
       String instant = at.toString();
       sources.save(
           new OpportunitySourceEntity(Ids.newId(), id, source, externalId, url, instant, excerpt));

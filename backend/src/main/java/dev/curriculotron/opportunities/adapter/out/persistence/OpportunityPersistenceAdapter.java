@@ -60,4 +60,10 @@ class OpportunityPersistenceAdapter implements OpportunityRepository {
     }
     return opportunities.updateDecision(id, decision, at) == 1;
   }
+
+  public void refreshDetails(String id, String title, String location, String workMode, String at) {
+    var entity = opportunities.findById(id).orElseThrow();
+    entity.refreshDetails(title, location, workMode, at);
+    opportunities.saveAndFlush(entity);
+  }
 }

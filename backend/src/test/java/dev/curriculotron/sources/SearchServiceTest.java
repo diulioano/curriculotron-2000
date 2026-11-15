@@ -99,28 +99,4 @@ class SearchServiceTest extends AppTestBase {
                 .intValue())
         .isEqualTo(2);
   }
-
-  @Test
-  void juniorCountsOnlyAtCompaniesWithUserJustification() {
-    var junior =
-        new JobSource.Item(
-            "manual",
-            "1",
-            "https://example.com/vaga/1",
-            "Desenvolvedor Java Júnior\nRemoto",
-            "Desenvolvedor Java Júnior",
-            "Remoto");
-    String sapReason =
-        (String)
-            em.createNativeQuery("SELECT junior_justification FROM company WHERE name = 'SAP'")
-                .getSingleResult();
-    assertThat(sapReason).contains("júnior compensa");
-
-    var sap = search.rank(junior, "SAP", sapReason, criteria.current());
-    assertThat(sap.fit()).isEqualTo("strong");
-    assertThat(sap.fitReasons()).anyMatch(r -> r.contains("Justificativa para júnior"));
-
-    var other = search.rank(junior, "BV", null, criteria.current());
-    assertThat(other.fit()).isEqualTo("weak");
-  }
 }

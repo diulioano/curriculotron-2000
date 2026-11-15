@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class DedupeService {
+  public record IngestResult(String opportunityId, boolean sourceConflict) {}
+
   private final DedupeRepository repository;
   private final WriteExecutor writer;
   private final AppClock clock;
@@ -24,6 +26,11 @@ public class DedupeService {
    */
   public String ingest(
       String source, String externalId, String url, String excerpt, Supplier<String> create) {
+    return ingestResult(source, externalId, url, excerpt, create).opportunityId();
+  }
+
+  public IngestResult ingestResult(
+      String source, String externalId, String url, String excerpt, Supplier<String> create) {
     if (source == null || source.isBlank())
       throw new IllegalArgumentException("Fonte obrigatória.");
     String canonical = CanonicalUrl.normalize(url);
@@ -33,12 +40,12 @@ public class DedupeService {
       var byUrl = repository.byUrl(canonical);
       if (byExternal.isPresent() && byUrl.isPresent() && !byExternal.get().equals(byUrl.get())) {
         repository.suggest(byExternal.get(), byUrl.get(), clock.now());
-        return byExternal.get();
+        return new IngestResult(byExternal.get(), true);
       }
       String id = byExternal.or(() -> byUrl).orElseGet(create);
       repository.attach(id, source, external, canonical, excerpt, clock.now());
       for (String similar : repository.similar(id)) repository.suggest(id, similar, clock.now());
-      return id;
+      return new IngestResult(id, false);
     });
   }
 }

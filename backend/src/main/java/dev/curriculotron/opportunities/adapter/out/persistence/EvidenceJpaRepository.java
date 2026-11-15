@@ -16,6 +16,11 @@ interface EvidenceJpaRepository extends JpaRepository<OpportunityEvidenceEntity,
   Optional<Long> revision(@Param("id") String id);
 
   @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      "update OpportunityEvidenceEntity e set e.opportunityId=:survivor where e.opportunityId=:merged")
+  int moveToSurvivor(@Param("survivor") String survivor, @Param("merged") String merged);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("update OpportunityEntity o set o.evidenceRevision=o.evidenceRevision+1 where o.id=:id")
   int invalidate(@Param("id") String id);
 }

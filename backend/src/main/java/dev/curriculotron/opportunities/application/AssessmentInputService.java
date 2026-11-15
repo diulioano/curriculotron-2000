@@ -45,13 +45,7 @@ public class AssessmentInputService {
     return jobs.find(id)
         .filter(job -> job.mergedInto() == null)
         .map(job -> {
-          String junior =
-              boards.boards().stream()
-                  .filter(b -> b.company().equalsIgnoreCase(job.companyName()))
-                  .map(ConfiguredSourceRepository.Board::juniorJustification)
-                  .filter(j -> j != null && !j.isBlank())
-                  .findFirst()
-                  .orElse(null);
+          String junior = boards.juniorJustification(job.companyName()).orElse(null);
           return new Input(
               job, evidence.forOpportunity(id), evidence.revision(id), criteria.current(), junior);
         });

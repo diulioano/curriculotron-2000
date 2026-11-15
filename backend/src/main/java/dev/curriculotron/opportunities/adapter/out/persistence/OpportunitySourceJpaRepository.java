@@ -1,9 +1,14 @@
 package dev.curriculotron.opportunities.adapter.out.persistence;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 interface OpportunitySourceJpaRepository extends JpaRepository<OpportunitySourceEntity, String> {
+  Optional<OpportunitySourceEntity> findByCanonicalUrl(String canonicalUrl);
+
+  Optional<OpportunitySourceEntity> findBySourceAndExternalId(String source, String externalId);
+
   List<OpportunitySourceEntity> findByOpportunityIdOrderByFetchedAtAscIdAsc(String opportunityId);
 
   boolean existsByCanonicalUrl(String canonicalUrl);

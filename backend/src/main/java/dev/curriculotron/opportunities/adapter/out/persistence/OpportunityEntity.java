@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table(name = "opportunity")
@@ -144,6 +145,18 @@ class OpportunityEntity {
 
   List<String> fitReasons() {
     return fitReasons;
+  }
+
+  void refreshDetails(String newTitle, String newLocation, String newWorkMode, String at) {
+    if (!Objects.equals(title, newTitle)
+        || !Objects.equals(location, newLocation)
+        || !Objects.equals(workMode, newWorkMode)) {
+      title = newTitle;
+      location = newLocation;
+      workMode = newWorkMode;
+      evidenceRevision++;
+      updatedAt = at;
+    }
   }
 
   String title() {

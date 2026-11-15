@@ -15,27 +15,27 @@ import org.springframework.stereotype.Service;
 public class OpportunityService {
   private final OpportunityRepository jobs;
   private final SelectionRepository selections;
-  private final DedupeService dedupe;
   private final WriteExecutor writer;
   private final AppClock clock;
   private final ActivityLogService activity;
   private final IntegrationStatusService status;
+  private final OpportunityIngestionService ingestion;
 
   public OpportunityService(
       OpportunityRepository jobs,
       SelectionRepository selections,
-      DedupeService dedupe,
       WriteExecutor writer,
       AppClock clock,
       ActivityLogService activity,
-      IntegrationStatusService status) {
+      IntegrationStatusService status,
+      OpportunityIngestionService ingestion) {
     this.jobs = jobs;
     this.selections = selections;
-    this.dedupe = dedupe;
     this.writer = writer;
     this.clock = clock;
     this.activity = activity;
     this.status = status;
+    this.ingestion = ingestion;
   }
 
   public Opportunity get(String id) {
@@ -60,20 +60,12 @@ public class OpportunityService {
 
   public Opportunity manual(String url, String text) {
     var item = new ManualSource(url, text).fetch().items().getFirst();
-    return writer.write(() -> {
-      String id =
-          item.url() == null
-              ? jobs.createManual(item.text(), clock.now().toString())
-              : dedupe.ingest(
-                  "manual",
-                  null,
-                  item.url(),
-                  item.text(),
-                  () -> jobs.createManual(item.text(), clock.now().toString()));
+    String id = ingestion.ingest(item, OpportunityIngestionService.UNCONFIRMED_COMPANY);
+    writer.run(() -> {
       activity.record(ActivityEntry.user("opportunity.manual", "opportunity", id));
       status.recordSuccess("source:manual", "Entrada manual; detalhes não verificados.");
-      return get(id);
     });
+    return get(id);
   }
 
   public void decide(String id, String decision) {

@@ -11,18 +11,21 @@ class MatchCandidatePersistenceAdapter implements MatchCandidateRepository {
   private final OpportunitySourceJpaRepository sources;
   private final UrlIdentityJpaRepository urlIdentities;
   private final ExternalIdentityJpaRepository externalIdentities;
+  private final EvidenceJpaRepository evidence;
 
   MatchCandidatePersistenceAdapter(
       OpportunityMatchCandidateJpaRepository candidates,
       OpportunityJpaRepository opportunities,
       OpportunitySourceJpaRepository sources,
       UrlIdentityJpaRepository urlIdentities,
-      ExternalIdentityJpaRepository externalIdentities) {
+      ExternalIdentityJpaRepository externalIdentities,
+      EvidenceJpaRepository evidence) {
     this.candidates = candidates;
     this.opportunities = opportunities;
     this.sources = sources;
     this.urlIdentities = urlIdentities;
     this.externalIdentities = externalIdentities;
+    this.evidence = evidence;
   }
 
   @Override
@@ -59,6 +62,7 @@ class MatchCandidatePersistenceAdapter implements MatchCandidateRepository {
     sources.moveToSurvivor(a, b);
     urlIdentities.moveToSurvivor(a, b);
     externalIdentities.moveToSurvivor(a, b);
+    if (evidence.moveToSurvivor(a, b) > 0) evidence.invalidate(a);
     candidates.rejectOpenForMerged(b, at);
     return true;
   }

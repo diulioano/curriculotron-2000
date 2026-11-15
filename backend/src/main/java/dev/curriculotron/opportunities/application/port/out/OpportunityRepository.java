@@ -16,6 +16,8 @@ public interface OpportunityRepository {
   /** Persists a vacancy found in a configured source with its literal facts and objective rank. */
   String createFromSource(SourcedOpportunity opportunity, String at);
 
+  void refreshDetails(String id, String title, String location, String workMode, String at);
+
   record SourcedOpportunity(
       String title,
       String company,

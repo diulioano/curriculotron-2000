@@ -6,6 +6,7 @@ import dev.curriculotron.opportunities.domain.VacancyEvidence.Completeness;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -41,6 +42,16 @@ class EvidencePersistenceAdapter implements EvidenceRepository {
                         .map(OpportunitySourceEntity::canonicalUrl)
                         .orElse(null)))
         .toList();
+  }
+
+  public Optional<String> sourceId(String source, String externalId, String canonicalUrl) {
+    return sources
+        .findByCanonicalUrl(canonicalUrl)
+        .or(() ->
+            externalId == null
+                ? Optional.empty()
+                : sources.findBySourceAndExternalId(source, externalId))
+        .map(OpportunitySourceEntity::id);
   }
 
   public long revision(String id) {
