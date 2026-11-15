@@ -32,6 +32,27 @@ describe('identidade da empresa no card', () => {
     expect(screen.getAllByRole('button', { name: 'Me candidatei' })).toHaveLength(3);
     expect(screen.getAllByRole('button', { name: 'Descartar' })).toHaveLength(3);
   });
+
+  it.each(['', '   '])('empresa ausente %j tem rótulo, grafite e iniciais decorativas', (name) => {
+    cards([name]);
+    expect(screen.getByText('Empresa não informada')).toBeVisible();
+    expect(screen.getByRole('article').style.getPropertyValue('--c')).toBe('#6B6B73');
+    expect(screen.getByText('?').closest('[aria-hidden]')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('salário a confirmar')).toBeVisible();
+  });
+
+  it('card descartado mantém empresa por texto e ação de restauração', () => {
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={new QueryClient()}>
+          <OpportunityCard item={colorJob('BV')} discarded />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText('BV')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Restaurar' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Descartar' })).not.toBeInTheDocument();
+  });
 });
 
 describe('StatusBadge (NFR-005: não depende de cor)', () => {

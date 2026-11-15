@@ -27,3 +27,7 @@ Consumidor e CSS existentes já usam --c em contorno/carimbo/hachura; nenhuma mu
 ## T006 — cores computadas
 
 Browser 2/2 PASS (360/1280), quatro superfícies e 13 cards + detalhe BV, bordas/pseudo-elementos/carimbo/hachura. Unit43/lint/build e Prettier focado PASS. Revisão qa APPROVED; MINOR sobre prova de rede ACEITO e corrigido por whitelist API e mesma origem; 2/2 repetidos e correção revisada APPROVED.
+
+## T007 — empresa ausente
+
+Duas falhas TDD de rótulo antes, 46/46 testes depois. Rótulo ausente, grafite, iniciais decorativas e restauração explícitos. Lint/build PASS. Revisão qa APPROVED, 12/12 componentes executados pelo revisor.

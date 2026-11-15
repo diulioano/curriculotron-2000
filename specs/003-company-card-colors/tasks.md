@@ -46,7 +46,7 @@ Checks frontend após alterações de código: `npm test`, `npm run lint`, `npm 
 **Goal**: identidade textual, contraste e ações acessíveis com qualquer cor.
 **Independent Test**: operar cards conhecidos/desconhecidos/ausentes por teclado em 360 e 1280 px, com estados legíveis sem depender da cor.
 
-- [ ] T007 [P] [US3] Tratar nome vazio/apenas espaços como “Empresa não informada” em `frontend/src/components/OpportunityCard.tsx`, preservando iniciais decorativas `?`, e ampliar `frontend/tests/unit/components.test.tsx` para ausência, empresa visível e estados textuais; não alterar o DTO nem aceitar null por cast (FR-006/008).
+- [X] T007 [P] [US3] Tratar nome vazio/apenas espaços como “Empresa não informada” em `frontend/src/components/OpportunityCard.tsx`, preservando iniciais decorativas `?`, e ampliar `frontend/tests/unit/components.test.tsx` para ausência, empresa visível e estados textuais; não alterar o DTO nem aceitar null por cast (FR-006/008).
 - [ ] T008 [P] [US3] Acrescentar casos de acessibilidade em `frontend/tests/e2e/frontend.spec.ts` usando fixtures T003: axe e contraste 4,5:1 em texto normal/3:1 em texto grande; teclado em todas as ações existentes, foco visível, nomes e estados textuais e `scrollWidth <= clientWidth` em 360/1280 px; incluir lista de descartadas e acesso às vagas além do limite móvel de Hoje (FR-008/010; SC-003/004).
 - [ ] T009 [US3] Executar T008 e corrigir problemas demonstrados de contraste, foco ou overflow em `frontend/src/app/panel.css` e, somente se necessário, em `frontend/src/index.css`; preservar texto/tinta, fundo claro, indicadores textuais e evitar opacidade no card inteiro; inspecionar pseudo-elementos e hachuras que axe não comprova, registrar medidas/evidências em `specs/003-company-card-colors/validation.md` e repetir cenários após correções.
 
@@ -95,6 +95,7 @@ Entregar primeiro o MVP funcional US1, com testes e revisão. Completar US3 ante
 Cobertura: FR-001/003/004/007 em T004–T006; FR-006 em T004/T007; FR-008/010 em T007–T009; FR-002/005 em T004/T010–T012; FR-009 em T005/T006/T011; SC-001 em T006, SC-002 em T011/T012, SC-003/004 em T008/T009. T013 consolida a evidência.
 
 `before_tasks`/`after_tasks`: `.specify/extensions.yml` ausente na geração, portanto sem hooks registrados a executar. Nenhuma tarefa de implementação foi executada por esta geração documental.
+
 
 
 
