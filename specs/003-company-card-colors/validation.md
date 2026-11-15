@@ -40,3 +40,7 @@ Browser2/2 PASS (360/1280), com Tab em controles visíveis, foco dashed3px, axe 
 
 Nenhum defeito CSS demonstrado: não houve alteração de panel.css/index.css. Inspeção do CSS existente confirmou .sk::before/after com --c e pointer-events:none, hachura decorativa e marca aria-hidden, carimbo com texto sobre --card, foco de tinta independente da marca e opacidade1. T006 verificou cores computadas nos dois pseudo-elementos, carimbo/hachura para13 cards; T008 verificou foco/overflow/axe e opacidade em ambas as larguras. Contraste calculado pela luminância relativa sRGB sobre #fffdf6: tinta #1b1b1f=16,87:1; suave #2a2a30=14,01:1; muted #44444c=9,48:1; hover #55555d=7,26:1. Todos excedem 4,5:1 normal e 3:1 grande. Evidência é inspeção de regras e estilos computados; não foi feita certificação visual humana universal. Revisão T009 APPROVED por qa, com recálculo independente de contraste e inspeção CSS.
 
+
+## T010 — invariantes de identidade
+
+Testes estendidos de caixa/bordas, nomes similares, ordem/subconjunto, Unicode e nomes longos: global58/58 PASS; revisão qa APPROVED com25/25 casos focados. Sem nova lógica de produção.
