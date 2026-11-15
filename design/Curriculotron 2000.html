@@ -696,26 +696,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     // on a parent whose child carries the blob — <video crossorigin><source>
     // — is left alone too; the attribute is then the author's to drop.)
     function stripBlobPinAttributes(tag) {
-      const lower = tag.toLowerCase();
-      const attributes = ['integrity="', 'crossorigin="'];
       const parts = [];
       let copyFrom = 0;
-      let i = 0;
-      while (i < tag.length) {
-        if (!' \t\r\n'.includes(tag[i])) {
-          i++;
-          continue;
-        }
-        const attribute = attributes.find((name) => lower.startsWith(name, i + 1));
-        if (!attribute) {
-          i++;
-          continue;
-        }
-        const end = tag.indexOf('"', i + 1 + attribute.length);
+      for (const match of tag.matchAll(/[ \t\r\n](?:integrity|crossorigin)="/gi)) {
+        const start = match.index;
+        if (start < copyFrom) continue;
+        const end = tag.indexOf('"', start + match[0].length);
         if (end < 0) break;
-        parts.push(tag.slice(copyFrom, i));
+        parts.push(tag.slice(copyFrom, start));
         copyFrom = end + 1;
-        i = copyFrom;
       }
       parts.push(tag.slice(copyFrom));
       return parts.join('');
