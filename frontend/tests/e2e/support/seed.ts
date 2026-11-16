@@ -10,6 +10,21 @@ export const PASSWORD: string = password;
 export const saoPauloDate = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
 
+export interface SeedEvidenceItem {
+  evidenceId?: string;
+  source?: string;
+  sourceUrl?: string | null;
+  fetchedAt?: string | null;
+  field: 'title' | 'description';
+  section?: string | null;
+  quote: string;
+  matchedCriterion?: string | null;
+  observedTerm?: string | null;
+  mentionKind: 'required' | 'optional' | 'usage' | 'negated' | 'incidental' | 'uncertain';
+  observedVersion?: string | null;
+  configuredVersion?: string | null;
+}
+
 export interface SeedCompatibility {
   criteriaVersion?: number;
   evaluatorVersion?: number;
@@ -19,6 +34,9 @@ export interface SeedCompatibility {
   technologyStatus: 'matched' | 'mismatched' | 'unknown' | 'unrestricted';
   reasonCodes?: string[];
   fitReasons?: string[];
+  criteriaRoles?: string[];
+  criteriaStack?: string[];
+  evidenceItems?: SeedEvidenceItem[];
 }
 
 export interface SeedJob {
@@ -56,6 +74,7 @@ export interface SeedOptions {
     remainingCount?: number;
     errorCode?: string | null;
   };
+  studyFacts?: string[];
 }
 
 /** Substitui todas as vagas por um conjunto controlado (sem portais reais). */
@@ -74,6 +93,8 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
     db.exec('DELETE FROM application');
     db.exec('DELETE FROM evidence');
     db.exec('DELETE FROM review_item');
+    db.exec('DELETE FROM profile_fact');
+    db.exec('DELETE FROM profile_version');
     for (const table of [
       'daily_selection',
       'opportunity_compatibility',
@@ -189,9 +210,9 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
         job.source?.fetchedAt ?? at,
       );
       if (job.compatibility !== null) {
-        const comp = job.compatibility ?? {
-          roleStatus: fit === 'strong' ? ('matched' as const) : ('unknown' as const),
-          technologyStatus: fit === 'strong' ? ('matched' as const) : ('unknown' as const),
+        const comp: SeedCompatibility = job.compatibility ?? {
+          roleStatus: fit === 'strong' ? 'matched' : 'unknown',
+          technologyStatus: fit === 'strong' ? 'matched' : 'unknown',
           reasonCodes:
             fit === 'strong'
               ? ['role_matched', 'technology_matched']
@@ -200,10 +221,13 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
         const compCriteriaVersion = comp.criteriaVersion ?? criteriaVersion;
         const compEvaluatorVersion = comp.evaluatorVersion ?? 1;
         const compEvidenceRevision = comp.evidenceRevision ?? evidenceRevision;
+        const snapshotRoles = comp.criteriaRoles ?? targetRoles;
+        const snapshotStack =
+          comp.criteriaStack ?? (comp.technologyStatus === 'unrestricted' ? [] : stackKeywords);
         const criteriaSnapshot = {
           criteria: {
-            roles: targetRoles,
-            stack: comp.technologyStatus === 'unrestricted' ? [] : stackKeywords,
+            roles: snapshotRoles,
+            stack: snapshotStack,
             hybridRegions: ['Porto Alegre'],
             priorityCompanies: [],
             remotePreferred: true,
@@ -212,6 +236,24 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
           cltMinimum: 6000,
           pjMinimum: 9000,
         };
+        const evidenceItems = (comp.evidenceItems ?? []).map((item, idx) => ({
+          evidenceId: item.evidenceId ?? `${job.id}-ev-${idx + 1}`,
+          source: item.source ?? job.source?.source ?? 'manual',
+          sourceUrl: item.sourceUrl !== undefined ? item.sourceUrl : (job.source?.url ?? null),
+          fetchedAt: item.fetchedAt !== undefined ? item.fetchedAt : (job.source?.fetchedAt ?? at),
+          field: item.field,
+          section: item.section ?? null,
+          quote: item.quote,
+          matchedCriterion: item.matchedCriterion ?? null,
+          observedTerm: item.observedTerm ?? null,
+          mentionKind: item.mentionKind,
+          observedVersion: item.observedVersion ?? null,
+          configuredVersion: item.configuredVersion ?? null,
+        }));
+        const defaultReasonCodes = [
+          `role_${comp.roleStatus}`,
+          `technology_${comp.technologyStatus}`,
+        ];
         compatibility.run(
           job.id,
           compCriteriaVersion,
@@ -220,9 +262,9 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
           comp.assessedAt ?? at,
           comp.roleStatus,
           comp.technologyStatus,
-          JSON.stringify(comp.reasonCodes ?? ['role_matched', 'technology_matched']),
+          JSON.stringify(comp.reasonCodes ?? defaultReasonCodes),
           JSON.stringify(criteriaSnapshot),
-          '[]',
+          JSON.stringify(evidenceItems),
           fit,
           fit === 'strong' ? 90 : fit === 'medium' ? 50 : 10,
           JSON.stringify(comp.fitReasons ?? job.fitReasons ?? []),
@@ -264,6 +306,29 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
       options.refresh?.assessedCount ?? currentAssessedCount,
       options.refresh?.remainingCount ?? pendingCount,
     );
+
+    if (options.studyFacts && options.studyFacts.length > 0) {
+      db.prepare(
+        `INSERT INTO profile_version(id, source_file, source_hash, status, reviewed_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).run('pv-e2e-1', 'curriculo.md', 'hash-e2e-1', 'reviewed', at, at, at);
+      const insertFact = db.prepare(
+        `INSERT INTO profile_fact(id, profile_version_id, kind, statement, origin, origin_ref, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      );
+      options.studyFacts.forEach((statement, idx) => {
+        insertFact.run(
+          `pf-study-${idx + 1}`,
+          'pv-e2e-1',
+          'skill',
+          statement,
+          'study_recommended',
+          'Plano de estudos',
+          at,
+          at,
+        );
+      });
+    }
 
     db.exec('COMMIT');
   } catch (e) {
