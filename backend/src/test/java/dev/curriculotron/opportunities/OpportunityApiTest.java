@@ -17,10 +17,12 @@ import dev.curriculotron.support.*;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 
 class OpportunityApiTest extends AppTestBase {
@@ -30,6 +32,7 @@ class OpportunityApiTest extends AppTestBase {
   @Autowired SelectionRepository selectionRepository;
   @Autowired WriteExecutor writer;
   @Autowired EntityManager em;
+  @Autowired JdbcClient jdbc;
   @Autowired AppClock clock;
 
   @BeforeEach
@@ -52,6 +55,21 @@ class OpportunityApiTest extends AppTestBase {
               SET version = 1,
                   target_roles = '["Desenvolvedor Fullstack Pleno Java","Desenvolvedor Backend Pleno Java","Software Engineer Java"]',
                   stack_keywords = '["Java","Java 17","Spring Boot","Angular","React","REST","Kafka","Microsserviços","JUnit","Mockito"]'
+              WHERE id = 1
+              """)
+          .executeUpdate();
+      em.createNativeQuery(
+              """
+              UPDATE compatibility_refresh
+              SET target_criteria_version = 1,
+                  evaluator_version = 1,
+                  run_id = NULL,
+                  state = 'pending',
+                  started_at = NULL,
+                  finished_at = NULL,
+                  error_code = NULL,
+                  assessed_count = 0,
+                  remaining_count = 0
               WHERE id = 1
               """)
           .executeUpdate();
@@ -199,6 +217,15 @@ class OpportunityApiTest extends AppTestBase {
     mvc.perform(get("/api/opportunities?list=selection").session(s.session()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items.length()").value(10))
+        .andExpect(jsonPath("$.assessment.criteriaVersion").value(1))
+        .andExpect(jsonPath("$.assessment.remainingCount").value(0))
+        .andExpect(jsonPath("$.items[0].compatibility.criteriaVersion").value(1))
+        .andExpect(jsonPath("$.items[0].compatibility.evaluatorVersion").value(1))
+        .andExpect(jsonPath("$.items[0].compatibility.assessedAt").isString())
+        .andExpect(jsonPath("$.items[0].compatibility.current").value(true))
+        .andExpect(jsonPath("$.items[0].compatibility.roleStatus").value("matched"))
+        .andExpect(jsonPath("$.items[0].compatibility.technologyStatus").value("matched"))
+        .andExpect(jsonPath("$.items[0].compatibility.reasonCodes").isNotEmpty())
         .andExpect(jsonPath("$.items[*].id", not(hasItem(partialUnknownId))))
         .andExpect(jsonPath("$.items[*].id", not(hasItem(unknownRoleId))))
         .andExpect(jsonPath("$.items[*].id", not(hasItem(mismatchedRoleId))))
@@ -207,12 +234,33 @@ class OpportunityApiTest extends AppTestBase {
     mvc.perform(get("/api/opportunities?list=secondary").session(s.session()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items.length()").value(7))
+        .andExpect(jsonPath("$.assessment.criteriaVersion").value(1))
         .andExpect(jsonPath("$.items[*].id", hasItem(partialUnknownId)))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + partialUnknownId + "')].compatibility.current",
+                hasItem(true)))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + partialUnknownId + "')].compatibility.roleStatus",
+                hasItem("matched")))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + partialUnknownId + "')].compatibility.technologyStatus",
+                hasItem("unknown")))
         .andExpect(
             jsonPath(
                 "$.items[?(@.id=='" + partialUnknownId + "')].fitReasons[*]",
                 hasItem("Compatibilidade tecnológica não confirmada.")))
         .andExpect(jsonPath("$.items[*].id", hasItem(unknownRoleId)))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + unknownRoleId + "')].compatibility.roleStatus",
+                hasItem("unknown")))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + unknownRoleId + "')].compatibility.technologyStatus",
+                hasItem("matched")))
         .andExpect(
             jsonPath(
                 "$.items[?(@.id=='" + unknownRoleId + "')].fitReasons[*]",
@@ -318,7 +366,208 @@ class OpportunityApiTest extends AppTestBase {
 
     mvc.perform(get("/api/opportunities?list=selection").session(s.session()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.items").isEmpty());
+        .andExpect(jsonPath("$.items").isEmpty())
+        .andExpect(jsonPath("$.assessment.criteriaVersion").value(2))
+        .andExpect(jsonPath("$.assessment.state").value("pending"))
+        .andExpect(jsonPath("$.assessment.stale").value(true));
     assertThat(selectionRepository.selected(clock.localDate())).containsExactly(compatibleId);
+  }
+
+  @Test
+  void opportunityListEnvelopeShowsStaleAndLegacyCompatibilityWithoutGetSideEffects()
+      throws Exception {
+    TestSession.setup(mvc, TestSession.PASSWORD);
+    var s = TestSession.login(mvc, TestSession.PASSWORD);
+
+    // Record a real dataAsOf via manual input, then ingest a compatible job and a discarded job.
+    mvc.perform(
+            post("/api/opportunities/manual")
+                .session(s.session())
+                .header("X-CSRF-Token", s.csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"url\":\"https://example.com/jobs/seed\",\"text\":\"Java remoto\"}"))
+        .andExpect(status().isOk());
+
+    String selectedId =
+        ingestion.ingest(
+            new JobSource.Item(
+                "lever:ciandt",
+                "env-ok",
+                "https://jobs.lever.co/ciandt/env-ok",
+                "Requisitos: Java e Spring Boot.",
+                "Desenvolvedor Backend Pleno",
+                "Remoto",
+                clock.localDate(),
+                Completeness.complete,
+                null),
+            "CI&T");
+    selections.selectToday();
+
+    String discardedAssessedId =
+        ingestion.ingest(
+            new JobSource.Item(
+                "lever:ciandt",
+                "env-disc",
+                "https://jobs.lever.co/ciandt/env-disc",
+                "Requisitos: Java e Spring Boot.",
+                "Desenvolvedor Backend Pleno",
+                "Remoto",
+                clock.localDate(),
+                Completeness.complete,
+                null),
+            "CI&T");
+    mvc.perform(
+            post("/api/opportunities/" + discardedAssessedId + "/discard")
+                .session(s.session())
+                .header("X-CSRF-Token", s.csrf()))
+        .andExpect(status().isOk());
+
+    String legacyDiscardedId = "legacy-disc-1";
+    writer.run(() ->
+        em.createNativeQuery(
+                """
+                INSERT INTO opportunity (
+                  id, title, company_name, location, work_mode, contract_type, salary_unit,
+                  requirements_facts, requirements_inferred, availability, fit, fit_score,
+                  fit_reasons, user_decision, created_at, updated_at
+                ) VALUES (
+                  :id, 'Vaga Legada', 'Empresa X', 'Remoto', 'remote', 'clt', 'monthly',
+                  '["Java"]', '[]', 'open', 'weak', 10,
+                  '["Java no perfil"]', 'discarded', '2026-11-10T10:00:00Z', '2026-11-10T10:00:00Z'
+                )
+                """)
+            .setParameter("id", legacyDiscardedId)
+            .executeUpdate());
+
+    // Other ApiListResponse endpoints must remain untouched (no assessment key).
+    mvc.perform(get("/api/task-runs").session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items").isArray())
+        .andExpect(jsonPath("$.assessment").doesNotExist());
+    mvc.perform(get("/api/activity").session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items").isArray())
+        .andExpect(jsonPath("$.assessment").doesNotExist());
+
+    var selectionResp =
+        mvc.perform(get("/api/opportunities?list=selection").session(s.session()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[*].id", contains(selectedId)))
+            .andExpect(jsonPath("$.items[0].compatibility.current").value(true))
+            .andExpect(jsonPath("$.dataAsOf").isString())
+            .andExpect(jsonPath("$.assessment.criteriaVersion").value(1))
+            .andReturn();
+    String dataAsOfBefore =
+        JsonPath.read(selectionResp.getResponse().getContentAsString(), "$.dataAsOf");
+
+    mvc.perform(get("/api/opportunities?list=discarded").session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + legacyDiscardedId + "')].compatibility.current",
+                contains(false)))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + legacyDiscardedId + "')].compatibility.criteriaVersion",
+                contains(nullValue())))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + legacyDiscardedId + "')].compatibility.evaluatorVersion",
+                contains(nullValue())))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + legacyDiscardedId + "')].compatibility.assessedAt",
+                contains(nullValue())))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + legacyDiscardedId + "')].compatibility.roleStatus",
+                contains("unknown")))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + legacyDiscardedId + "')].compatibility.technologyStatus",
+                contains("unknown")))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + legacyDiscardedId + "')].compatibility.reasonCodes[0]",
+                contains("not_assessed")))
+        .andExpect(jsonPath("$.items[?(@.id=='" + legacyDiscardedId + "')].fitReasons[*]", empty()))
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + discardedAssessedId + "')].compatibility.current",
+                contains(true)));
+
+    // Advance clock and update criteria -> dataAsOf stays unchanged, discarded assessed becomes
+    // current=false and suppresses stale fitReasons.
+    clock.setClock(Clock.fixed(Instant.parse("2026-11-14T16:00:00Z"), AppClock.ZONE));
+    mvc.perform(
+            put("/api/criteria")
+                .session(s.session())
+                .header("X-CSRF-Token", s.csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"version":1,"targetRoles":["Backend Developer"],"stackKeywords":["Python"],
+                     "remotePreferred":true,"hybridRegions":[],"cltMinMonthlyBrl":6000,"pjMinMonthlyBrl":9000,
+                     "acceptJuniorIfJustified":true,"dailySearchTimeLocal":"07:30","deadlineHighlightDays":7,
+                     "urgentHours":48,"emailDigestEnabled":false}
+                    """))
+        .andExpect(status().isOk());
+
+    var discardedAfterPut =
+        mvc.perform(get("/api/opportunities?list=discarded").session(s.session()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.dataAsOf").value(dataAsOfBefore))
+            .andExpect(jsonPath("$.assessment.criteriaVersion").value(2))
+            .andExpect(jsonPath("$.assessment.state").value("pending"))
+            .andExpect(jsonPath("$.assessment.stale").value(true))
+            .andExpect(jsonPath("$.assessment.remainingCount").value(4))
+            .andExpect(
+                jsonPath(
+                    "$.items[?(@.id=='" + discardedAssessedId + "')].compatibility.current",
+                    contains(false)))
+            .andExpect(
+                jsonPath(
+                    "$.items[?(@.id=='" + discardedAssessedId + "')].compatibility.criteriaVersion",
+                    contains(1)))
+            .andExpect(
+                jsonPath("$.items[?(@.id=='" + discardedAssessedId + "')].fitReasons[*]", empty()))
+            .andReturn();
+    List<String> assessedAtList =
+        JsonPath.read(
+            discardedAfterPut.getResponse().getContentAsString(),
+            "$.items[?(@.id=='" + discardedAssessedId + "')].compatibility.assessedAt");
+
+    // Advance clock again and execute repeated GETs: zero mutations and identical timestamps.
+    clock.setClock(Clock.fixed(Instant.parse("2026-11-14T18:00:00Z"), AppClock.ZONE));
+    long activityBefore = jdbc.sql("SELECT count(*) FROM activity_log").query(Long.class).single();
+    long tasksBefore = jdbc.sql("SELECT count(*) FROM task_run").query(Long.class).single();
+    long compatibilityBefore =
+        jdbc.sql("SELECT count(*) FROM opportunity_compatibility").query(Long.class).single();
+
+    for (String listName : List.of("selection", "secondary", "discarded")) {
+      mvc.perform(get("/api/opportunities?list=" + listName).session(s.session()))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.dataAsOf").value(dataAsOfBefore))
+          .andExpect(jsonPath("$.assessment.criteriaVersion").value(2))
+          .andExpect(jsonPath("$.assessment.state").value("pending"))
+          .andExpect(jsonPath("$.assessment.startedAt").value(nullValue()))
+          .andExpect(jsonPath("$.assessment.finishedAt").value(nullValue()))
+          .andExpect(jsonPath("$.assessment.remainingCount").value(4));
+    }
+
+    mvc.perform(get("/api/opportunities?list=discarded").session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath(
+                "$.items[?(@.id=='" + discardedAssessedId + "')].compatibility.assessedAt",
+                contains(assessedAtList.getFirst())));
+
+    assertThat(jdbc.sql("SELECT count(*) FROM activity_log").query(Long.class).single())
+        .isEqualTo(activityBefore);
+    assertThat(jdbc.sql("SELECT count(*) FROM task_run").query(Long.class).single())
+        .isEqualTo(tasksBefore);
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM opportunity_compatibility").query(Long.class).single())
+        .isEqualTo(compatibilityBefore);
   }
 }

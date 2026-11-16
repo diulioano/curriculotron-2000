@@ -66,6 +66,11 @@ public class OpportunityService {
         .toList();
   }
 
+  @Transactional(readOnly = true)
+  public int consumedCount(LocalDate date) {
+    return selections.selected(date).size();
+  }
+
   public Opportunity manual(String url, String text) {
     var item = new ManualSource(url, text).fetch().items().getFirst();
     String id = ingestion.ingest(item, OpportunityIngestionService.UNCONFIRMED_COMPANY);

@@ -4,6 +4,7 @@ import dev.curriculotron.opportunities.application.port.out.OpportunitySourceRep
 import dev.curriculotron.opportunities.domain.Opportunity;
 import dev.curriculotron.salary.application.SalaryReference;
 import java.util.List;
+import java.util.Objects;
 
 public record OpportunitySummary(
     String id,
@@ -21,8 +22,10 @@ public record OpportunitySummary(
     Source source,
     String companyTier,
     SalaryReference salaryReference,
-    String glassdoorUrl) {
+    String glassdoorUrl,
+    CompatibilitySummary compatibility) {
   public OpportunitySummary {
     fitReasons = List.copyOf(fitReasons);
+    Objects.requireNonNull(compatibility);
   }
 }

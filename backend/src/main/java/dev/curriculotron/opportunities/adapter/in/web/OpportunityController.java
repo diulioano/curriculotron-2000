@@ -1,17 +1,16 @@
 package dev.curriculotron.opportunities.adapter.in.web;
 
 import dev.curriculotron.audit.application.IntegrationStatusService;
+import dev.curriculotron.opportunities.application.CompatibilityStatusService;
 import dev.curriculotron.opportunities.application.OpportunityService;
 import dev.curriculotron.opportunities.application.port.out.OpportunitySourceRepository;
 import dev.curriculotron.opportunities.domain.Opportunity;
-import dev.curriculotron.salary.application.SalaryEstimateService;
 import dev.curriculotron.shared.AppClock;
 import dev.curriculotron.shared.web.ApiException;
-import dev.curriculotron.shared.web.ApiListResponse;
-import dev.curriculotron.sources.PublicationStore;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,8 +21,7 @@ public class OpportunityController {
   private final IntegrationStatusService status;
   private final AppClock clock;
   private final OpportunitySummaries summaries;
-  private final SalaryEstimateService salary;
-  private final PublicationStore publications;
+  private final CompatibilityStatusService compatibility;
 
   public OpportunityController(
       OpportunityService jobs,
@@ -31,25 +29,30 @@ public class OpportunityController {
       IntegrationStatusService status,
       AppClock clock,
       OpportunitySummaries summaries,
-      SalaryEstimateService salary,
-      PublicationStore publications) {
+      CompatibilityStatusService compatibility) {
     this.jobs = jobs;
     this.summaries = summaries;
     this.sources = sources;
     this.status = status;
     this.clock = clock;
-    this.salary = salary;
-    this.publications = publications;
+    this.compatibility = compatibility;
   }
 
   @GetMapping
-  public ApiListResponse<OpportunitySummary> list(
+  @Transactional(readOnly = true)
+  public OpportunityListResponse list(
       @RequestParam(defaultValue = "selection") String list,
       @RequestParam(required = false) LocalDate date) {
+    var items = listByName(list, date == null ? clock.localDate() : date);
+    return new OpportunityListResponse(
+        summaries.of(items),
+        status.latestSuccess().map(java.time.Instant::toString).orElse(null),
+        compatibility.current());
+  }
+
+  private java.util.List<Opportunity> listByName(String list, LocalDate date) {
     try {
-      return new ApiListResponse<>(
-          summaries.of(jobs.list(list, date == null ? clock.localDate() : date)),
-          status.latestSuccess().map(java.time.Instant::toString).orElse(null));
+      return jobs.list(list, date);
     } catch (IllegalArgumentException e) {
       throw ApiException.badRequest("invalid_list", "Lista inválida.");
     }
