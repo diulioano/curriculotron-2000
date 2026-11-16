@@ -45,6 +45,29 @@ class CompatibilityRefreshPersistenceAdapter implements CompatibilityRefreshRepo
     refresh.saveAndFlush(r);
   }
 
+  @Override
+  public boolean updateIfOwner(
+      String expectedRunId,
+      long expectedCriteriaVersion,
+      int expectedEvaluatorVersion,
+      CompatibilityRefresh value) {
+    if (expectedRunId == null || expectedRunId.isBlank()) return false;
+    return refresh.updateIfOwner(
+            expectedRunId,
+            expectedCriteriaVersion,
+            expectedEvaluatorVersion,
+            value.criteriaVersion(),
+            value.evaluatorVersion(),
+            value.runId(),
+            value.state().name(),
+            value.startedAt() == null ? null : value.startedAt().toString(),
+            value.finishedAt() == null ? null : value.finishedAt().toString(),
+            value.errorCode(),
+            value.assessedCount(),
+            value.remainingCount())
+        == 1;
+  }
+
   private static Instant instant(String value) {
     return value == null ? null : Instant.parse(value);
   }

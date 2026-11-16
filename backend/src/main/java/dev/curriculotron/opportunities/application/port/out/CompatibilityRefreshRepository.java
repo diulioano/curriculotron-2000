@@ -6,4 +6,10 @@ public interface CompatibilityRefreshRepository {
   CompatibilityRefresh current();
 
   void save(CompatibilityRefresh refresh);
+
+  boolean updateIfOwner(
+      String expectedRunId,
+      long expectedCriteriaVersion,
+      int expectedEvaluatorVersion,
+      CompatibilityRefresh next);
 }
