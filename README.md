@@ -1,4 +1,4 @@
-﻿# Curriculotron 2000
+# Curriculotron 2000
 
 Aplicação pessoal de revisão de vagas. Backend Java 25/Spring Boot e frontend React/Vite.
 
@@ -61,6 +61,14 @@ O arquivo padrão é `specs/002-estimativa-salarial/pleno-web-observations.json`
 
 API adicional: GET `/api/salary-estimates`, POST `/api/salary-estimates/import` (lote de até 100, atômico), POST `/api/opportunities/{id}/salary-estimate/refresh`, com CSRF/Idempotency-Key. Histórico é append-only. Um lote precisa conter faixa, critérios, fonte, URL HTTPS Glassdoor, evidência e data; não importar números inferidos como se fossem observados.
 
+## Critérios do perfil e compatibilidade de vagas
+
+A tela `/criterios` edita `targetRoles`, `stackKeywords` e demais filtros persistidos via `GET /api/criteria` e `PUT /api/criteria` (controle de concorrência por `version`, retornando `409 criteria_version_conflict` em edição concorrente e `400 invalid_criteria` para entradas inválidas). Alterar critérios marca avaliações anteriores como pendentes (`stale: true`, `state: pending`), oculta recomendações desatualizadas nas listas `selection` e `secondary` e preserva histórico de candidaturas e descartes.
+
+A reavaliação explícita ocorre apenas por `POST /api/opportunities/reassess` (`{ criteriaVersion }` + `X-CSRF-Token`), processando de forma síncrona as evidências já armazenadas sem novas coletas externas. O progresso e estado persistido são consultados por `GET /api/opportunities/compatibility-status`. Consultas `GET` nunca coletam fontes nem reavaliam vagas. `GET /api/home` e `GET /api/opportunities` incluem `assessment` (`RefreshStatus`), `selectionToday.consumedCount` preserva o consumo bruto do teto diário (10/dia) mesmo quando itens incompatíveis são ocultados, e o detalhe em `GET /api/opportunities/{id}` expõe `compatibility`, `compatibilityEvidence` e `compatibilityCriteria`.
+
+Limitações conhecidas desta implementação: a classificação usa regras determinísticas sobre evidências armazenadas nas fontes e textos salvos (sem chamadas externas de modelo); a reavaliação síncrona processa lotes no banco local (com até 3 passagens de reconciliação se houver atualização concorrente de evidências). Detalhes em [`specs/004-respeitar-tecnologias-perfil/contracts/compatibility-api.md`](specs/004-respeitar-tecnologias-perfil/contracts/compatibility-api.md).
+
 ## Verificações
 
 ```powershell
@@ -72,6 +80,8 @@ npm run build
 # Usa banco e servidor descartáveis; escolher porta livre:
 $env:CURRICULOTRON_E2E_PORT='18446'
 npm run test:e2e -- salary-estimates.spec.ts
+$env:CURRICULOTRON_E2E_PORT='18447'
+npm run test:e2e -- profile-compatibility.spec.ts
 ```
 
-JUnit inclui testes com SQLite real temporário em src/test; a source set integrationTest atualmente não possui testes. Guia de cenários e resultados detalhados: `specs/002-estimativa-salarial/quickstart.md` e `research.md`. Piloto de cobertura de uma semana e execução web autônoma continuam pendentes.
+JUnit inclui testes com SQLite real temporário em `src/test`; a source set `integrationTest` atualmente não possui testes. Guias de cenários e resultados detalhados: [`specs/002-estimativa-salarial/quickstart.md`](specs/002-estimativa-salarial/quickstart.md) e [`specs/004-respeitar-tecnologias-perfil/quickstart.md`](specs/004-respeitar-tecnologias-perfil/quickstart.md). Piloto de cobertura de uma semana e execução web autônoma de salários continuam pendentes.

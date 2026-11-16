@@ -1,4 +1,4 @@
-﻿# Feature Specification: Assistente pessoal de busca de emprego
+# Feature Specification: Assistente pessoal de busca de emprego
 
 **Feature Branch**: Não criada; workspace sem repositório Git.
 
@@ -133,7 +133,7 @@ Cada requisito é verificado pelas jornadas indicadas e pela inspeção de seus 
 - **FR-002 (J1, J5)**: Aplicar o perfil inicial e regras de negócio abaixo; permitir editar empresas prioritárias e consultar sugestões em lista secundária sem promovê-las automaticamente.
 - **FR-003 (J1)**: Executar busca sob demanda com fontes disponíveis e permitidas, incluindo investigação de Gupy, LinkedIn e sites das empresas. O período padrão cobre os 30 dias anteriores; cada busca manual pode receber datas inicial e final. Registrar fontes consultadas, falhas e limitações. Busca diária automática fica desabilitada por padrão até o usuário habilitá-la.
 - **FR-004 (J1)**: Comparar, deduplicar e priorizar vagas; selecionar de cinco a dez novas oportunidades quando houver compatibilidade suficiente, aceitar menos e nunca ultrapassar dez novas seleções no mesmo dia, inclusive em buscas manuais.
-- **FR-005 (J1, J3)**: Manter oportunidades restantes na lista secundária e excluir descartadas e vagas vinculadas a candidaturas de futuras recomendações, salvo reversão explícita do usuário.
+- **FR-005 (J1, J3)**: Manter na lista secundária apenas oportunidades compatíveis excedentes e pendências sem incompatibilidade demonstrada (excluindo incompatibilidades demonstradas de função ou tecnologia de ambas as listas), além de excluir descartadas e vagas vinculadas a candidaturas de futuras recomendações, salvo reversão explícita do usuário.
 - **FR-006 (J1)**: Exibir título, empresa, localização, modalidade, requisitos, salário disponível, fonte, link, data de consulta, disponibilidade e motivo da recomendação. Separar fatos, ausências e inferências.
 - **FR-007 (J2)**: Oferecer criador conversacional restrito a emprego que proponha função, instruções, ferramentas, limites e rotinas; permitir revisar, editar, ativar e pausar bots. Ativação inicial e alterações de configuração dependem de revisão explícita.
 - **FR-008 (J2)**: Disponibilizar propostas iniciais de Coordenador (pedidos e distribuição), Busca de vagas (descoberta e priorização), Acompanhamento (candidaturas e Gmail) e Preparação (simulação e revisão direcionada), sujeitas à mesma revisão.
@@ -152,7 +152,7 @@ Cada requisito é verificado pelas jornadas indicadas e pela inspeção de seus 
 
 ### Regras de negócio confirmadas
 
-- **RB-001 — Perfil**: Desenvolvedor pleno com foco backend Java e experiência fullstack; alvo principal fullstack pleno Java. Considerar Java 17, Spring Boot, Angular, React, REST, Kafka, microsserviços, bancos de dados, JUnit, Mockito e testes unitários/de integração conforme currículo e informações revisadas.
+- **RB-001 — Perfil**: Carga inicial configurável (seed): desenvolvedor pleno com foco backend Java e experiência fullstack; alvo inicial fullstack/backend pleno Java com Java, Java 17, Spring Boot, Angular, React, REST, Kafka, microsserviços, JUnit e Mockito. Os valores editados e persistidos em `/criterios` (`targetRoles` e `stackKeywords`) passam a governar tanto novas buscas (manuais e por rotina) quanto a reavaliação do acervo, sem fixar Java após alteração pelo usuário.
 - **RB-002 — Localização**: Preferir remoto. Considerar híbrido na região metropolitana de Porto Alegre, ponderando empresa, remuneração, crescimento e deslocamento, sem limite fixo de dias presenciais. Não presumir disponibilidade para mudança ou trabalho presencial fora desse recorte.
 - **RB-003 — Contratação**: Preferir CLT com bruto mensal mínimo de R$ 6.000; PJ é alternativa menos desejada, mínimo de R$ 9.000 mensais. Salário ausente não exclui, mas exige “salário a confirmar”. Valores explicitamente abaixo do mínimo não entram na seleção principal. Faixa que cruza o mínimo exige confirmação de oferta compatível.
 - **RB-004 — Flexibilidade**: Considerar júnior se salário, empresa e crescimento justificarem, registrando o motivo. Justificativa por empresa definida pelo usuário: na SAP, júnior vale a pena (menos carga, salário maior) — 2026-11-14. Aceitar exigência de inglês sem inferir fluência não informada. Ausência de evidência de competência é lacuna, não experiência inventada.
@@ -207,7 +207,7 @@ Piloto de duas semanas. Metas numéricas não fornecidas no pedido são hipótes
 ## Assumptions
 
 - Não há dúvidas de produto bloqueantes para escrever a especificação. Questões de mecanismo e viabilidade permanecem no planejamento, sem pressupor respostas positivas.
-- A constituição existente é um template não preenchido; não estabelece princípios adicionais aprovados.
+- A [constituição do projeto](../../.specify/memory/constitution.md) (v1.0.0, ratificada em 2026-11-15) estabelece os princípios técnicos vigentes aplicáveis a novas alterações e à revisão posterior de conformidade do legado.
 - O currículo disponível é fonte inicial, não prova de competências além do texto. Atualidade das informações deve ser revisada pelo usuário.
 - Para tornar o comportamento testável, assume-se dia e horários locais em America/Sao_Paulo. Busca manual usa os 30 dias anteriores por padrão e permite definir outro período; rotina diária automática começa desabilitada e só deve ser habilitada quando o usuário decidir que já há base suficiente. Buscas adicionais alimentam a lista secundária depois do teto diário, sem apagar a seleção já avaliada.
 - Assume-se destaque de prazos nos próximos sete dias, com maior urgência para vencidos e próximas 48 horas; limites podem ser ajustados pelo usuário.

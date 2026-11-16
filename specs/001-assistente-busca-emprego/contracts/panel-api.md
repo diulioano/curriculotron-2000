@@ -25,22 +25,26 @@ Regras transversais:
 `GET /api/home` ⇒
 ```json
 {
-  "dataAsOf": "…", "integrations": [{ "id": "openbot", "state": "ok", "lastSuccessAt": "…", "lastAttemptAt": "…" }],
-  "selectionToday": { "localDate": "2026-11-14", "count": 3, "limit": 10, "items": [/* OpportunitySummary */] },
+  "dataAsOf": "…",
+  "assessment": { "criteriaVersion": 1, "state": "ready", "stale": false, "assessedCount": 12, "remainingCount": 0, "startedAt": "…", "finishedAt": "…", "errorCode": null },
+  "integrations": [{ "id": "openbot", "state": "ok", "lastSuccessAt": "…", "lastAttemptAt": "…" }],
+  "selectionToday": { "localDate": "2026-11-14", "count": 3, "consumedCount": 3, "limit": 10, "items": [/* OpportunitySummary */] },
   "applicationsWithNextActions": [/* ApplicationSummary, ordenadas por prazo */],
   "mailNeedingAttention": [/* MailSummary */],
   "reviewQueueCount": 2,
   "missedRoutines": [{ "routineId": "…", "scheduledFor": "…" }]
 }
 ```
-`dataAsOf` reflete a última atualização real (US5-4); ausência de sucesso ⇒ `null`, nunca a hora atual.
+`dataAsOf` reflete a última atualização real (US5-4); ausência de sucesso ⇒ `null`, nunca a hora atual. `selectionToday.count` é a quantidade visível em `items` com avaliação atual compatível; `selectionToday.consumedCount` preserva o consumo bruto do teto diário (0–10) sem liberar novas vagas quando incompatibilidades ocultam itens já selecionados.
 
 ## Vagas (FR-003–FR-006, FR-010)
 
 | Rota | Descrição |
 | --- | --- |
-| `GET /api/opportunities?list=selection\|secondary\|discarded&date=` | Listas |
-| `GET /api/opportunities/{id}` | Detalhe com `facts`, `inferred`, `missing` separados; `salary: null` ⇒ UI "salário a confirmar"; `sources[]` com `url`, `fetchedAt` |
+| `GET /api/opportunities?list=selection\|secondary\|discarded&date=` | Listas `{items, dataAsOf, assessment}` (`selection` e `secondary` expõem apenas `compatibility.current === true` e excluem mismatches; `unknown` fica apenas em `secondary`; `discarded` segue consultável mesmo desatualizada) |
+| `GET /api/opportunities/{id}` | Detalhe com `facts`, `inferred`, `missing` separados, além de `compatibility`, `compatibilityEvidence` e `compatibilityCriteria`; `salary: null` ⇒ UI "salário a confirmar"; `sources[]` com `url`, `fetchedAt` |
+| `GET /api/opportunities/compatibility-status` | Estado persistido da avaliação (`RefreshStatus`: `criteriaVersion`, `state`, `stale`, `assessedCount`, `remainingCount`, `startedAt`, `finishedAt`, `errorCode`); somente leitura |
+| `POST /api/opportunities/reassess` | `{criteriaVersion}` (exige `X-CSRF-Token`) ⇒ reavaliação síncrona sobre evidências já armazenadas (`200 {criteriaVersion, state: "ready", assessedCount, remainingCount: 0, finishedAt}`); `400 invalid_criteria_version`, `409 criteria_version_conflict\|reassessment_running\|evidence_changed`, `500 reassessment_failed`; não altera `daily_selection` nem coleta rede |
 | `POST /api/opportunities/{id}/discard` | Exclui de recomendações futuras |
 | `POST /api/opportunities/{id}/restore` | Reversão explícita |
 | `POST /api/opportunities/{id}/applied` | "Me candidatei" ⇒ cria `Application` (`confirmationOrigin: manual`); `409` se já existe |
@@ -93,7 +97,7 @@ Não existe rota que envie e-mail sem `Approval`; não existe parâmetro que dis
 
 ## Perfil (FR-001, FR-002)
 
-`GET/PUT /api/profile`, `POST /api/profile/import` (reimporta `curriculo-en-draft.md`), `GET/PUT /api/criteria`, `GET/POST/PUT /api/companies`, `POST /api/companies/{id}/promote`.
+`GET/PUT /api/profile`, `POST /api/profile/import` (reimporta `curriculo-en-draft.md`), `GET/PUT /api/criteria` (implementados com persistência, `version` obrigatória, `409 criteria_version_conflict`, `400 invalid_criteria`, `assessment: RefreshStatus`, sem reavaliação nem coleta no `GET`/`PUT`), `GET/POST/PUT /api/companies`, `POST /api/companies/{id}/promote`.
 
 ## Preparação (FR-019, FR-020)
 
@@ -107,17 +111,17 @@ Não existe rota que envie e-mail sem `Approval`; não existe parâmetro que dis
 
 `GET /api/data-inventory`, `DELETE /api/applications/{id}/mail-content`, `POST /api/data/erase-all` (exige senha novamente).
 
-## DTOs do frontend (incremento de 2026-11-14)
+## DTOs do frontend (incremento de 2026-11-14 e extensão de compatibilidade)
 
-As rotas acima que ainda não têm implementação de domínio no backend são consumidas pelo frontend com o formato abaixo. Os testes de interface interceptam essas rotas; fixtures não são incluídas no app de produção. A entrega das telas não comprova a implementação dos serviços.
+As rotas acima que ainda não têm implementação de domínio no backend são consumidas pelo frontend com o formato abaixo. Os testes de interface interceptam essas rotas; fixtures não são incluídas no app de produção. A entrega das telas não comprova a implementação dos serviços (com exceção dos endpoints de vagas, candidaturas, salários, critérios e reavaliação já implementados no backend).
 
-- Listas de vagas, candidaturas, duplicatas, revisão, empresas, tarefas e atividades: `{items: [...], dataAsOf: string|null}`. Detalhes retornam o objeto diretamente. Datas usam camelCase, assim como os demais campos JSON.
-- `OpportunitySummary`: `{id, title, companyName, location, workMode, contractType, salary, publishedAt: string|null, fitReasons: string[], userDecision, availability, deadlineAt?: string|null}`. `publishedAt: null` indica que a fonte não informou a data; isso não prova que a vaga esteja dentro do período pesquisado. `salary` é `null` ou `{min: number|null, max: number|null, unit: monthly|hourly|yearly|unknown}`; valores em BRL. O detalhe acrescenta `facts`, `inferred`, `missing` (listas de texto) e `sources: [{source, url, fetchedAt}]`. O resumo traz `source: {source, url, fetchedAt} | null` (a fonte consultada por último) e pode trazer `companyTier: priority|suggested|null`; o detalhe traz todas as fontes.
+- Listas de candidaturas, duplicatas, revisão, empresas, tarefas e atividades: `{items: [...], dataAsOf: string|null}`. A lista de vagas (`GET /api/opportunities`) usa `{items: [...], dataAsOf: string|null, assessment: RefreshStatus}` (`OpportunityListResponse`). Detalhes retornam o objeto diretamente. Datas usam camelCase, assim como os demais campos JSON.
+- `OpportunitySummary`: `{id, title, companyName, location, workMode, contractType, salary, publishedAt: string|null, fitReasons: string[], userDecision, availability, deadlineAt?: string|null, compatibility: {criteriaVersion, evaluatorVersion, assessedAt, current, roleStatus, technologyStatus, reasonCodes}}`. `publishedAt: null` indica que a fonte não informou a data; isso não prova que a vaga esteja dentro do período pesquisado. `salary` é `null` ou `{min: number|null, max: number|null, unit: monthly|hourly|yearly|unknown}`; valores em BRL. O detalhe acrescenta `compatibilityEvidence`, `compatibilityCriteria`, `facts`, `inferred`, `missing` (listas de texto) e `sources: [{source, url, fetchedAt}]`. O resumo traz `source: {source, url, fetchedAt} | null` (a fonte consultada por último) e pode trazer `companyTier: priority|suggested|null`; o detalhe traz todas as fontes. Esquema completo de compatibilidade em [compatibility-api.md](../../004-respeitar-tecnologias-perfil/contracts/compatibility-api.md).
 - `ApplicationSummary`: `{id, opportunityId, title, companyName, status, nextAction: string|null, nextActionDueAt: string|null, duePrecision}`. O detalhe acrescenta `history: [{id, toStatus, author, reason, at, evidence: {ref, quote}|null}]`. O formulário de próxima ação envia data sem hora escolhida como fim do dia em São Paulo (`T23:59:59-03:00`) e `duePrecision: date_only`; sem data envia `dueAt: null` e `ambiguous`.
 - Duplicatas: `{id, opportunityA: OpportunitySummary, opportunityB: OpportunitySummary, signal}`. Revisão: `{id, kind, summary, targetRef, createdAt}`. Resolver uma revisão de bot não aprova configuração: essa aprovação permanece na rota específica, vinculada ao hash.
-- Tarefas: `{id, state, pauseReason: string|null, errorSummary: string|null}`. Atividades: `{id, author, action, result, error: string|null, at}`. `GET /api/home` mantém o formato já descrito acima; integrações acrescentam `detail?: string`.
+- Tarefas: `{id, state, pauseReason: string|null, errorSummary: string|null}`. Atividades: `{id, author, action, result, error: string|null, at}`. `GET /api/home` mantém o formato já descrito acima (com `assessment` e `selectionToday.consumedCount`); integrações acrescentam `detail?: string`.
 - Perfil: `{id, status, facts: [{id, kind, statement, origin, originRef}]}`. `PUT /api/profile` recebe essa estrutura; revisar envia `status: reviewed`. O frontend preserva fatos documentados e de estudo, edita declarações e cria novas declarações com UUID. O backend deve validar origens e não permitir que uma declaração se torne evidência documental por edição da requisição.
-- Critérios: campos de `SearchCriteria` do data-model em camelCase, incluindo `version` para controle de concorrência. Empresas: `{id, name, tier, notes}`; criar recebe `{name, tier: priority, notes}`. Promoção de sugerida usa exclusivamente `POST /api/companies/{id}/promote`.
+- Critérios: campos de `SearchCriteria` do data-model em camelCase, incluindo `version` para controle de concorrência, acrescidos de `assessment: RefreshStatus` na resposta de `GET/PUT /api/criteria` (implementados em backend e frontend, com `cltMinMonthlyBrl > 0` e `pjMinMonthlyBrl > 0`). Empresas: `{id, name, tier, notes}`; criar recebe `{name, tier: priority, notes}`. Promoção de sugerida usa exclusivamente `POST /api/companies/{id}/promote`.
 - Inventário: `{items: [{category, count, retention}]}`. A tela de dados é somente consulta neste incremento; exclusão e revogação continuam pendentes de T096.
 
 Frontend ainda pendente: gestão/conversa de bots (T060), Gmail/rascunhos (T087), entrevista (T104), edição de empresas existentes e exclusão em Dados/Privacidade (restante de T097). Falhas de API são exibidas com opção de tentar novamente e nunca transformadas em listas vazias ou em datas de sucesso.

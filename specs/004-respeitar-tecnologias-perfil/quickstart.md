@@ -1,14 +1,14 @@
 # Quickstart — Validação da feature 004
 
-Guia para a implementação futura; os cenários desta feature ainda não foram executados.
+Guia de validação da feature `004-respeitar-tecnologias-perfil` (US1–US3 implementadas; T031–T034 concluem benchmark, verificação consolidada e entrega remota).
 
 ## Pré-requisitos e isolamento
 
-Java 25 e Node/npm compatíveis com os manifests/lock existentes. Executar a partir da raiz do projeto. Dependências devem estar instaladas com npm ci no frontend. Não usar banco pessoal, nem CURRICULOTRON_URL apontando ao app real. Playwright existente cria instalação/SQLite descartáveis quando CURRICULOTRON_URL não está definido.
+Java 25 e Node/npm compatíveis com os manifests/lock existentes. Executar a partir da raiz do projeto. Dependências devem estar instaladas com `npm ci` no frontend. Não usar banco pessoal, nem `CURRICULOTRON_URL` apontando ao app real. O harness Playwright existente cria instalação/SQLite descartáveis quando `CURRICULOTRON_URL` não está definido.
 
-Dados de domínio: ao menos vinte anúncios estáticos com resultado esperado por eixo, texto/contexto e completude explícitos. Fontes em WireMock/fixtures; não consultar sites reais. Criar coverage de C/C++/C#, Java/JavaScript, versões, negativo, incidental, diferencial, descrição parcial/legada, conflito, cargos das capturas e troca Java→Python.
+Dados de domínio: ao menos vinte anúncios estáticos com resultado esperado por eixo, texto/contexto e completude explícitos. Fontes em WireMock/fixtures em testes; não consultar sites reais. Coverage inclui C/C++/C#, Java/JavaScript, versões, negativo, incidental, diferencial, descrição parcial/legada, conflito, cargos das capturas e troca Java→Python.
 
-## Checks após implementar
+## Checks de implementação e verificação
 
 ```powershell
 ./backend/gradlew.bat -p backend test spotlessCheck
@@ -24,9 +24,9 @@ try {
 }
 ```
 
-Rodar integrationTest apenas se houver casos adicionados nessa source set; sem casos não é prova de integração. Hoje testes SQLite podem estar em src/test. Usar build para typecheck, pois não existe script npm typecheck no baseline. Não instalar pnpm nem atualizar stack nesta demanda.
+Rodar `integrationTest` apenas se houver casos adicionados nessa source set (hoje os testes com SQLite real temporário residem em `src/test`; `integrationTest` permanece vazia). Usar `npm run build` para typecheck, pois não existe script `npm typecheck` no baseline. No Windows com Git `core.autocrlf = true`, arquivos não editados com CRLF no working tree podem fazer `npm run format:check` acusar quebra de linha local; no CI Linux (`LF`) o check roda sobre os arquivos versionados.
 
-E2E novo planejado: frontend/tests/e2e/profile-compatibility.spec.ts. Só executar o comando abaixo depois de o arquivo existir:
+E2E dedicado: `frontend/tests/e2e/profile-compatibility.spec.ts`:
 ```powershell
 Remove-Item Env:CURRICULOTRON_URL -ErrorAction SilentlyContinue
 $env:CURRICULOTRON_E2E_PORT = '18447'
@@ -38,7 +38,7 @@ try {
 }
 ```
 
-Harness usa home temporário, servidor próprio e projetos mobile-360/desktop-1280; confirmar porta livre. Não apontar dois processos ao mesmo SQLite. A implementação deve fornecer seed controlado no harness, sem novo endpoint de produção para testes.
+O harness usa home temporário, servidor próprio e projetos `mobile-360` e `desktop-1280`; confirmar porta livre. Não apontar dois processos ao mesmo SQLite. O seed controlado fica restrito ao harness E2E (`frontend/tests/e2e/support/seed.ts`), sem endpoint de produção para testes.
 
 ## Jornadas observáveis
 
@@ -58,7 +58,7 @@ Harness usa home temporário, servidor próprio e projetos mobile-360/desktop-12
 
 [Contratos](contracts/compatibility-api.md) definem formatos; [modelo](data-model.md) define invariantes. Cobrir todos os FR-001–010 e SC-001–005: vinte anúncios com resultados esperados fixos, zero falsos matches dos casos negativos, cem por cento de decisões/histórico preservados. Benchmark local com 1.000 anúncios mede meta de leitura <=2s e reavaliação <=10s; registrar hardware, tamanho/texto e tempo, sem afirmar antes de medir.
 
-Revisão por agente deve registrar arquivo, evidência, impacto e severidade por tarefa; corrigir impeditivos e rever correções antes do commit. Commits delimitados e push da US pertencem à implementação. Verificar execução real dos checks/revisão no Git antes de afirmar CI ativa. Esta fase de planejamento não constitui testes, deploy, migração nem aprovação funcional.
+Revisão por agente deve registrar arquivo, evidência, impacto e severidade por tarefa; corrigir impeditivos e rever correções antes do commit. Commits delimitados e push da US acompanham a entrega. Verificar execução real dos checks/revisão no Git antes de afirmar CI ativa; testes e benchmarks não executam deploy, migração automática do banco pessoal nem aprovação funcional implícita.
 
 ## Resultados registrados — T029 (E2E e paridade)
 
