@@ -340,6 +340,16 @@ test.beforeEach(async ({ page }) => {
         deadlineHighlightDays: 7,
         urgentHours: 48,
         emailDigestEnabled: false,
+        assessment: {
+          criteriaVersion: 1,
+          state: 'ready',
+          stale: false,
+          assessedCount: 1,
+          remainingCount: 0,
+          startedAt: null,
+          finishedAt: '2026-11-14T10:00:00Z',
+          errorCode: null,
+        },
       };
     else if (path === '/api/data-inventory')
       data = { items: [{ category: 'Perfil', count: 1, retention: 'Até exclusão pelo usuário' }] };

@@ -1,3 +1,4 @@
+import { api } from './client';
 import type {
   Application,
   HomeData,
@@ -42,6 +43,33 @@ export interface RefreshStatus {
   startedAt: string | null;
   finishedAt: string | null;
   errorCode: string | null;
+}
+
+export interface CriteriaUpdatePayload {
+  version: number;
+  targetRoles: string[];
+  stackKeywords: string[];
+  remotePreferred: boolean;
+  hybridRegions: string[];
+  cltMinMonthlyBrl: number;
+  pjMinMonthlyBrl: number;
+  acceptJuniorIfJustified: boolean;
+  dailySearchTimeLocal: string;
+  deadlineHighlightDays: number;
+  urgentHours: number;
+  emailDigestEnabled: boolean;
+}
+
+export interface CriteriaResponse extends CriteriaUpdatePayload {
+  assessment: RefreshStatus;
+}
+
+export interface ReassessResponse {
+  criteriaVersion: number;
+  state: RefreshState;
+  assessedCount: number;
+  remainingCount: number;
+  finishedAt: string | null;
 }
 
 export interface CompatibilitySummary {
@@ -433,4 +461,130 @@ export function describeRefreshStatus(status: RefreshStatus): string | null {
     return `Avaliação de compatibilidade desatualizada ou pendente para o critério v${status.criteriaVersion} (${status.remainingCount} vaga(s) pendente(s)). Resultados antigos ficam ocultos; vagas já atualizadas permanecem visíveis.`;
   }
   return `Critérios v${status.criteriaVersion} aguardando avaliação nas próximas buscas ou atualização no perfil.`;
+}
+
+function asPositiveNumber(raw: unknown, field: string): number {
+  const n = asNumber(raw, field);
+  if (n <= 0) throw new Error(`Campo ${field} deve ser positivo.`);
+  return n;
+}
+
+function asIntRange(raw: unknown, field: string, min: number, max: number): number {
+  const n = asInt(raw, field, min);
+  if (n > max) throw new Error(`Campo ${field} excede limite (${max}).`);
+  return n;
+}
+
+function asTimeHHmm(raw: unknown, field: string): string {
+  const s = asString(raw, field);
+  if (!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(s)) {
+    throw new Error(`Horário inválido em ${field}.`);
+  }
+  return s;
+}
+
+export function parseCriteriaResponse(raw: unknown): CriteriaResponse {
+  const obj = asRecord(raw, 'CriteriaResponse');
+  return {
+    version: asInt(obj.version, 'version', 1),
+    targetRoles: asStringArray(obj.targetRoles, 'targetRoles'),
+    stackKeywords: asStringArray(obj.stackKeywords, 'stackKeywords'),
+    remotePreferred: asBoolean(obj.remotePreferred, 'remotePreferred'),
+    hybridRegions: asStringArray(obj.hybridRegions, 'hybridRegions'),
+    cltMinMonthlyBrl: asPositiveNumber(obj.cltMinMonthlyBrl, 'cltMinMonthlyBrl'),
+    pjMinMonthlyBrl: asPositiveNumber(obj.pjMinMonthlyBrl, 'pjMinMonthlyBrl'),
+    acceptJuniorIfJustified: asBoolean(obj.acceptJuniorIfJustified, 'acceptJuniorIfJustified'),
+    dailySearchTimeLocal: asTimeHHmm(obj.dailySearchTimeLocal, 'dailySearchTimeLocal'),
+    deadlineHighlightDays: asIntRange(obj.deadlineHighlightDays, 'deadlineHighlightDays', 1, 365),
+    urgentHours: asIntRange(obj.urgentHours, 'urgentHours', 1, 8760),
+    emailDigestEnabled: asBoolean(obj.emailDigestEnabled, 'emailDigestEnabled'),
+    assessment: parseRefreshStatus(obj.assessment),
+  };
+}
+
+export function parseReassessResponse(raw: unknown): ReassessResponse {
+  const obj = asRecord(raw, 'ReassessResponse');
+  if (!('finishedAt' in obj)) {
+    throw new Error('Campo finishedAt ausente em ReassessResponse.');
+  }
+  return {
+    criteriaVersion: asInt(obj.criteriaVersion, 'criteriaVersion', 1),
+    state: asEnum(obj.state, REFRESH_STATES, 'state'),
+    assessedCount: asInt(obj.assessedCount, 'assessedCount', 0),
+    remainingCount: asInt(obj.remainingCount, 'remainingCount', 0),
+    finishedAt: asNullableString(obj.finishedAt, 'finishedAt'),
+  };
+}
+
+export async function getCriteria(signal?: AbortSignal): Promise<CriteriaResponse> {
+  return parseCriteriaResponse(await api<unknown>('/api/criteria', { signal }));
+}
+
+export async function updateCriteria(
+  payload: CriteriaUpdatePayload,
+  signal?: AbortSignal,
+): Promise<CriteriaResponse> {
+  return parseCriteriaResponse(
+    await api<unknown>('/api/criteria', { method: 'PUT', body: payload, signal }),
+  );
+}
+
+export async function getCompatibilityStatus(signal?: AbortSignal): Promise<RefreshStatus> {
+  return parseRefreshStatus(
+    await api<unknown>('/api/opportunities/compatibility-status', { signal }),
+  );
+}
+
+const DEFAULT_REASSESS_TIMEOUT_MS = 30_000;
+
+export async function reassessCompatibility(
+  criteriaVersion: number,
+  options: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<ReassessResponse> {
+  const controller = new AbortController();
+  const timeoutMs = options.timeoutMs ?? DEFAULT_REASSESS_TIMEOUT_MS;
+  const onExternalAbort = () => controller.abort(options.signal?.reason);
+  if (options.signal) {
+    if (options.signal.aborted) {
+      controller.abort(options.signal.reason);
+    } else {
+      options.signal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+  }
+  const timer = setTimeout(() => {
+    controller.abort(
+      new DOMException('Tempo esgotado ao reavaliar compatibilidade.', 'TimeoutError'),
+    );
+  }, timeoutMs);
+  try {
+    return parseReassessResponse(
+      await api<unknown>('/api/opportunities/reassess', {
+        method: 'POST',
+        body: { criteriaVersion },
+        signal: controller.signal,
+      }),
+    );
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', onExternalAbort);
+  }
+}
+
+export function describeProfileAssessmentStatus(status: RefreshStatus): string {
+  if (status.state === 'running') {
+    return `Atualizando avaliação de compatibilidade para o critério v${status.criteriaVersion} (${status.remainingCount} vaga(s) pendente(s))…`;
+  }
+  if (status.state === 'failed') {
+    if (status.errorCode === 'interrupted') {
+      return `A atualização anterior foi interrompida antes de concluir (${status.remainingCount} vaga(s) pendente(s)). Você pode retomar a atualização.`;
+    }
+    if (status.errorCode === 'evidence_changed') {
+      return `Vagas foram alteradas durante a última tentativa (${status.remainingCount} vaga(s) pendente(s)). Tente atualizar novamente.`;
+    }
+    return `A atualização da compatibilidade falhou (${status.remainingCount} vaga(s) pendente(s)). Você pode tentar novamente.`;
+  }
+  if (status.state === 'pending' || status.stale) {
+    return `Avaliação pendente para o critério v${status.criteriaVersion} (${status.remainingCount} vaga(s) pendente(s)).`;
+  }
+  return `Compatibilidade atualizada para o critério v${status.criteriaVersion}.`;
 }
