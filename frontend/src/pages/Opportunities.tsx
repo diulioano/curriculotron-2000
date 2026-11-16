@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../api/client';
 import { describeRefreshStatus } from '../api/compatibility';
-import { panel, post } from '../api/panel';
+import {
+  useCompatibilityRefresh,
+  useCoordinatedOpportunitiesQuery,
+} from '../api/useCompatibilityRefresh';
+import { post } from '../api/panel';
 import { DataAsOf } from '../components/DataAsOf';
 import { Empty, MutationFeedback, PageHeader, QueryState } from '../components/Panel';
 import { OpportunityCard } from '../components/OpportunityCard';
@@ -19,10 +23,8 @@ export function Opportunities() {
     ? params.get('list')!
     : 'selection';
   const client = useQueryClient();
-  const query = useQuery({
-    queryKey: ['opportunities', list],
-    queryFn: ({ signal }) => panel.opportunities(list, signal),
-  });
+  const { invalidateAfterOpportunityChange } = useCompatibilityRefresh();
+  const query = useCoordinatedOpportunitiesQuery(list);
   const routine = useQuery({
     queryKey: ['search-routine'],
     queryFn: () => api<{ enabled: boolean }>('/api/settings/search-routine'),
@@ -58,7 +60,7 @@ export function Opportunities() {
     onSuccess: () => {
       setUrl('');
       setText('');
-      void client.invalidateQueries({ queryKey: ['opportunities'] });
+      void invalidateAfterOpportunityChange();
     },
   });
   function submit(e: FormEvent) {
@@ -180,40 +182,44 @@ export function Opportunities() {
         </Link>
       </nav>
       <QueryState pending={query.isPending} error={query.error} retry={query.refetch} />
-      {query.data && (
-        <>
-          <DataAsOf at={query.data.dataAsOf} />
-          {(() => {
-            const warning = describeRefreshStatus(query.data.assessment);
-            return (
-              warning && (
+      {query.data &&
+        (() => {
+          const visibleItems =
+            list === 'discarded'
+              ? query.data.items
+              : query.data.items.filter((item) => item.compatibility.current);
+          const warning = describeRefreshStatus(query.data.assessment);
+          return (
+            <>
+              <DataAsOf at={query.data.dataAsOf} />
+              {warning && (
                 <div className="notice dsh" role="status">
                   {warning} <Link to="/criterios">Ver critérios →</Link>
                 </div>
-              )
-            );
-          })()}
-          {query.data.items.length ? (
-            <div className="jobs-grid">
-              {query.data.items.map((item) => (
-                <OpportunityCard key={item.id} item={item} discarded={list === 'discarded'} />
-              ))}
-            </div>
-          ) : (
-            <Empty>
-              Nenhuma vaga nesta lista.
-              {query.data.assessment.stale &&
-                query.data.assessment.remainingCount > 0 &&
-                list !== 'discarded' && (
-                  <>
-                    {' '}
-                    Vagas com avaliação pendente ou desatualizada ficam ocultas até a atualização.
-                  </>
-                )}
-            </Empty>
-          )}
-        </>
-      )}
+              )}
+              {visibleItems.length ? (
+                <div className="jobs-grid">
+                  {visibleItems.map((item) => (
+                    <OpportunityCard key={item.id} item={item} discarded={list === 'discarded'} />
+                  ))}
+                </div>
+              ) : (
+                <Empty>
+                  Nenhuma vaga nesta lista.
+                  {query.data.assessment.stale &&
+                    query.data.assessment.remainingCount > 0 &&
+                    list !== 'discarded' && (
+                      <>
+                        {' '}
+                        Vagas com avaliação pendente ou desatualizada ficam ocultas até a
+                        atualização.
+                      </>
+                    )}
+                </Empty>
+              )}
+            </>
+          );
+        })()}
     </div>
   );
 }

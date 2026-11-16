@@ -4,14 +4,17 @@ import { NavLink } from 'react-router';
 import { ApiError, api } from '../api/client';
 import {
   describeProfileAssessmentStatus,
-  getCompatibilityStatus,
-  getCriteria,
-  reassessCompatibility,
-  updateCriteria,
   type CriteriaResponse,
   type CriteriaUpdatePayload,
   type RefreshStatus,
 } from '../api/compatibility';
+import {
+  useCompatibilityRefresh,
+  useCoordinatedCompatibilityStatusQuery,
+  useCoordinatedCriteriaQuery,
+  useReassessMutation,
+  useSaveCriteriaMutation,
+} from '../api/useCompatibilityRefresh';
 import { post, type ListResult } from '../api/panel';
 import { Empty, MutationFeedback, PageHeader, QueryState } from '../components/Panel';
 
@@ -183,7 +186,7 @@ function cleanLines(lines: string[]): string[] {
   return lines.map((line) => line.trim()).filter((line) => line.length > 0);
 }
 function CriteriaForm({ data }: { data: CriteriaResponse }) {
-  const client = useQueryClient();
+  const { reloadCriteriaSnapshot } = useCompatibilityRefresh();
   const [draft, setDraft] = useState<CriteriaUpdatePayload | null>(null);
   const [conflictMessage, setConflictMessage] = useState<string | null>(null);
   const [reloadError, setReloadError] = useState<string | null>(null);
@@ -191,17 +194,11 @@ function CriteriaForm({ data }: { data: CriteriaResponse }) {
 
   const form = draft ?? toUpdatePayload(data);
 
-  const save = useMutation({
-    mutationFn: (payload: CriteriaUpdatePayload) => updateCriteria(payload),
-    onSuccess: (saved) => {
+  const save = useSaveCriteriaMutation({
+    onSuccess: () => {
       setDraft(null);
       setConflictMessage(null);
       setReloadError(null);
-      client.setQueryData(['criteria'], saved);
-      client.setQueryData(['compatibility-status'], saved.assessment);
-      void client.invalidateQueries({ queryKey: ['opportunities'] });
-      void client.invalidateQueries({ queryKey: ['opportunity'] });
-      void client.invalidateQueries({ queryKey: ['home'] });
     },
     onError: (error) => {
       if (error instanceof ApiError && error.code === 'criteria_version_conflict') {
@@ -214,9 +211,7 @@ function CriteriaForm({ data }: { data: CriteriaResponse }) {
     setReloading(true);
     setReloadError(null);
     try {
-      const fresh = await getCriteria();
-      client.setQueryData(['criteria'], fresh);
-      client.setQueryData(['compatibility-status'], fresh.assessment);
+      await reloadCriteriaSnapshot();
       setDraft(null);
       setConflictMessage(null);
       save.reset();
@@ -346,31 +341,15 @@ function CriteriaForm({ data }: { data: CriteriaResponse }) {
   );
 }
 function AssessmentPanel({ initialStatus }: { initialStatus: RefreshStatus }) {
-  const client = useQueryClient();
+  const { consultLatestStatus } = useCompatibilityRefresh();
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackInfo, setFeedbackInfo] = useState<string | null>(null);
   const [statusUnconfirmed, setStatusUnconfirmed] = useState(false);
 
-  const statusQuery = useQuery({
-    queryKey: ['compatibility-status'],
-    queryFn: async ({ signal }) => {
-      const latest = await getCompatibilityStatus(signal);
-      client.setQueryData<CriteriaResponse>(['criteria'], (old) =>
-        old && old.version === latest.criteriaVersion ? { ...old, assessment: latest } : old,
-      );
-      if (latest.state !== 'running') {
-        setFeedbackInfo(null);
-        void client.invalidateQueries({ queryKey: ['opportunities'] });
-        void client.invalidateQueries({ queryKey: ['opportunity'] });
-        void client.invalidateQueries({ queryKey: ['home'] });
-      }
-      return latest;
+  const statusQuery = useCoordinatedCompatibilityStatusQuery(initialStatus, {
+    onNonRunningStatus: () => {
+      setFeedbackInfo(null);
     },
-    retry: false,
-    enabled: (query) =>
-      !query.state.error && (query.state.data ?? initialStatus).state === 'running',
-    refetchInterval: (query) =>
-      !query.state.error && (query.state.data ?? initialStatus).state === 'running' ? 200 : false,
   });
 
   const currentStatus = statusQuery.data ?? initialStatus;
@@ -380,25 +359,11 @@ function AssessmentPanel({ initialStatus }: { initialStatus: RefreshStatus }) {
 
   async function consultStatusAfterUncertainty(reasonMessage: string, isTimeout: boolean) {
     try {
-      const latest = await client.fetchQuery({
-        queryKey: ['compatibility-status'],
-        queryFn: async ({ signal }) => {
-          const fetched = await getCompatibilityStatus(signal);
-          client.setQueryData<CriteriaResponse>(['criteria'], (old) =>
-            old && old.version === fetched.criteriaVersion ? { ...old, assessment: fetched } : old,
-          );
-          return fetched;
-        },
-        staleTime: 0,
-        retry: false,
-      });
+      const latest = await consultLatestStatus();
       setStatusUnconfirmed(false);
       if (latest.state === 'ready' && !latest.stale) {
         setFeedbackError(null);
         setFeedbackInfo(null);
-        void client.invalidateQueries({ queryKey: ['opportunities'] });
-        void client.invalidateQueries({ queryKey: ['opportunity'] });
-        void client.invalidateQueries({ queryKey: ['home'] });
       } else if (latest.state === 'running') {
         setFeedbackError(null);
         setFeedbackInfo(
@@ -423,35 +388,15 @@ function AssessmentPanel({ initialStatus }: { initialStatus: RefreshStatus }) {
     }
   }
 
-  const reassess = useMutation({
-    mutationFn: (criteriaVersion: number) => reassessCompatibility(criteriaVersion),
+  const reassess = useReassessMutation({
     onMutate: () => {
       setFeedbackError(null);
       setFeedbackInfo(null);
       setStatusUnconfirmed(false);
     },
-    onSuccess: (result) => {
-      const nextStatus: RefreshStatus = {
-        criteriaVersion: result.criteriaVersion,
-        state: result.state,
-        stale: result.remainingCount > 0 || result.state !== 'ready',
-        assessedCount: result.assessedCount,
-        remainingCount: result.remainingCount,
-        startedAt: currentStatus.startedAt,
-        finishedAt: result.finishedAt,
-        errorCode: null,
-      };
-      client.setQueryData(['compatibility-status'], nextStatus);
-      client.setQueryData<CriteriaResponse>(['criteria'], (old) =>
-        old && old.version === nextStatus.criteriaVersion
-          ? { ...old, assessment: nextStatus }
-          : old,
-      );
+    onSuccess: () => {
       setFeedbackError(null);
       setFeedbackInfo(null);
-      void client.invalidateQueries({ queryKey: ['opportunities'] });
-      void client.invalidateQueries({ queryKey: ['opportunity'] });
-      void client.invalidateQueries({ queryKey: ['home'] });
     },
     onError: async (error) => {
       if (error instanceof ApiError && error.code === 'reassessment_running') {
@@ -523,15 +468,7 @@ function AssessmentPanel({ initialStatus }: { initialStatus: RefreshStatus }) {
   );
 }
 export function Criteria() {
-  const client = useQueryClient();
-  const query = useQuery({
-    queryKey: ['criteria'],
-    queryFn: async ({ signal }) => {
-      const criteria = await getCriteria(signal);
-      client.setQueryData(['compatibility-status'], criteria.assessment);
-      return criteria;
-    },
-  });
+  const query = useCoordinatedCriteriaQuery();
   return (
     <div className="stack">
       <PageHeader title="Critérios de busca" eyebrow="Uma busca com a sua medida" />

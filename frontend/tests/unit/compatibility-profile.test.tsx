@@ -373,7 +373,9 @@ describe('Criteria UI integrada com versionamento, status e reavaliação', () =
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const path = String(input);
         const method = init?.method ?? 'GET';
-        if (path === '/api/criteria' && method === 'GET') return json(200, serverCriteria);
+        if (path === '/api/criteria' && method === 'GET') {
+          return json(200, { ...serverCriteria, assessment: currentStatus });
+        }
         if (path === '/api/opportunities/reassess' && method === 'POST') {
           postCount++;
           if (postCount === 1) {
@@ -436,7 +438,9 @@ describe('Criteria UI integrada com versionamento, status e reavaliação', () =
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const path = String(input);
         const method = init?.method ?? 'GET';
-        if (path === '/api/criteria' && method === 'GET') return json(200, criteria);
+        if (path === '/api/criteria' && method === 'GET') {
+          return json(200, { ...criteria, assessment: status });
+        }
         if (path === '/api/opportunities/compatibility-status' && method === 'GET') {
           return json(200, status);
         }
@@ -504,7 +508,9 @@ describe('Criteria UI integrada com versionamento, status e reavaliação', () =
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const path = String(input);
         const method = init?.method ?? 'GET';
-        if (path === '/api/criteria' && method === 'GET') return json(200, criteria);
+        if (path === '/api/criteria' && method === 'GET') {
+          return json(200, { ...criteria, assessment: status });
+        }
         if (path === '/api/opportunities/compatibility-status' && method === 'GET') {
           return json(200, status);
         }
@@ -571,7 +577,9 @@ describe('Criteria UI integrada com versionamento, status e reavaliação', () =
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const path = String(input);
         const method = init?.method ?? 'GET';
-        if (path === '/api/criteria' && method === 'GET') return json(200, criteria);
+        if (path === '/api/criteria' && method === 'GET') {
+          return json(200, { ...criteria, assessment: status });
+        }
         if (path === '/api/opportunities/reassess' && method === 'POST') {
           throw new DOMException('Timed out', 'TimeoutError');
         }
@@ -619,12 +627,13 @@ describe('Criteria UI integrada com versionamento, status e reavaliação', () =
         remainingCount: 2,
       }),
     });
-    const statusV2 = makeStatus({
+    let currentStatus = makeStatus({
       criteriaVersion: 2,
       state: 'pending',
       stale: true,
       remainingCount: 3,
     });
+    let conflictObserved = false;
     const postedVersions: number[] = [];
 
     vi.stubGlobal(
@@ -632,14 +641,20 @@ describe('Criteria UI integrada com versionamento, status e reavaliação', () =
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const path = String(input);
         const method = init?.method ?? 'GET';
-        if (path === '/api/criteria' && method === 'GET') return json(200, criteriaV1);
+        if (path === '/api/criteria' && method === 'GET') {
+          return json(
+            200,
+            conflictObserved ? makeCriteria({ version: 2, assessment: currentStatus }) : criteriaV1,
+          );
+        }
         if (path === '/api/opportunities/compatibility-status' && method === 'GET') {
-          return json(200, statusV2);
+          return json(200, currentStatus);
         }
         if (path === '/api/opportunities/reassess' && method === 'POST') {
           const body = JSON.parse(String(init?.body)) as { criteriaVersion: number };
           postedVersions.push(body.criteriaVersion);
           if (body.criteriaVersion === 1) {
+            conflictObserved = true;
             return json(409, {
               error: {
                 code: 'criteria_version_conflict',
@@ -647,6 +662,14 @@ describe('Criteria UI integrada com versionamento, status e reavaliação', () =
               },
             });
           }
+          currentStatus = makeStatus({
+            criteriaVersion: 2,
+            state: 'ready',
+            stale: false,
+            assessedCount: 3,
+            remainingCount: 0,
+            finishedAt: '2026-11-16T11:30:00Z',
+          });
           return json(200, {
             criteriaVersion: 2,
             state: 'ready',

@@ -1,7 +1,11 @@
 import type { CSSProperties } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
-import { panel, post, type OpportunityDetail as Detail, type TaskRun } from '../api/panel';
+import { post, type OpportunityDetail as Detail, type TaskRun } from '../api/panel';
+import {
+  useCompatibilityRefresh,
+  useCoordinatedOpportunityDetailQuery,
+} from '../api/useCompatibilityRefresh';
 import { CompatibilityEvidence } from '../components/CompatibilityEvidence';
 import { Deadline } from '../components/Deadline';
 import { SalaryEstimate } from '../components/SalaryEstimate';
@@ -18,17 +22,12 @@ const safeUrl = (url: string) => /^https?:\/\//i.test(url);
 export function OpportunityDetail() {
   const { id = '' } = useParams();
   const client = useQueryClient();
-  const query = useQuery({
-    queryKey: ['opportunity', id],
-    queryFn: ({ signal }) => panel.opportunity(id, signal),
-  });
+  const { invalidateAfterOpportunityChange } = useCompatibilityRefresh();
+  const query = useCoordinatedOpportunityDetailQuery(id);
   const action = useMutation({
     mutationFn: (kind: string) => post(`/api/opportunities/${encodeURIComponent(id)}/${kind}`),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['opportunity', id] });
-      void client.invalidateQueries({ queryKey: ['opportunities'] });
-      void client.invalidateQueries({ queryKey: ['home'] });
-      void client.invalidateQueries({ queryKey: ['applications'] });
+      void invalidateAfterOpportunityChange();
     },
   });
   const item = query.data;

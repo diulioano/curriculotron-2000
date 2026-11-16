@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { describeRefreshStatus } from '../api/compatibility';
-import { panel, type Application, type HomeData, type Integration } from '../api/panel';
+import { useCoordinatedHomeQuery } from '../api/useCompatibilityRefresh';
+import { type Application, type HomeData, type Integration } from '../api/panel';
 import { Empty, QueryState } from '../components/Panel';
 import { OpportunityCard, type CardLayout } from '../components/OpportunityCard';
 import { companyColor } from '../lib/opportunity';
@@ -78,8 +78,11 @@ function upcomingDeadlines(data: HomeData, now: number) {
 }
 
 export function Home() {
-  const query = useQuery({ queryKey: ['home'], queryFn: ({ signal }) => panel.home(signal) });
+  const query = useCoordinatedHomeQuery();
   const data = query.data;
+  const visibleSelectionItems = data
+    ? data.selectionToday.items.filter((item) => item.compatibility.current)
+    : [];
   const now = new Date();
   const today = now.toLocaleDateString('pt-BR', {
     timeZone: ZONE,
@@ -145,9 +148,9 @@ export function Home() {
                 . <Link to="/vagas?list=secondary">Ver a lista secundária →</Link>
               </p>
             </div>
-            {data.selectionToday.items.length ? (
+            {visibleSelectionItems.length ? (
               <div className="jobs-flow">
-                {data.selectionToday.items.map((item, index) => (
+                {visibleSelectionItems.map((item, index) => (
                   <OpportunityCard
                     key={item.id}
                     item={item}
@@ -159,12 +162,18 @@ export function Home() {
             ) : (
               <Empty>
                 Nenhuma vaga selecionada hoje.{' '}
-                <Link to="/vagas">Abra Vagas para iniciar uma busca.</Link>
+                {data.assessment.stale && data.assessment.remainingCount > 0 ? (
+                  <>
+                    Vagas com avaliação pendente ou desatualizada ficam ocultas até a atualização.
+                  </>
+                ) : (
+                  <Link to="/vagas">Abra Vagas para iniciar uma busca.</Link>
+                )}
               </Empty>
             )}
-            {data.selectionToday.items.length > MOBILE_CARDS && (
+            {visibleSelectionItems.length > MOBILE_CARDS && (
               <Link className="only-narrow more-jobs" to="/vagas">
-                Ver as outras {data.selectionToday.items.length - MOBILE_CARDS} vagas do dia →
+                Ver as outras {visibleSelectionItems.length - MOBILE_CARDS} vagas do dia →
               </Link>
             )}
             <p className="muted home-footnote">
