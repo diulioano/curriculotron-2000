@@ -1,7 +1,7 @@
 name: Notify Shaka about new pull requests
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, synchronize]
 
 permissions:
