@@ -64,5 +64,17 @@ Revisão por agente deve registrar arquivo, evidência, impacto e severidade por
 
 - **Backend paridade manual/rotina e ausência de coleta em GET/refresh**: `./backend/gradlew.bat -p backend spotlessApply test --tests dev.curriculotron.sources.SearchIngestionTest` e `spotlessCheck` executados com sucesso (`3/3` testes em `SearchIngestionTest`, incluindo lote misto via `POST /api/searches` vs `SearchService.run` com `TaskRunTrigger.routine`, além de `verifyNoInteractions(JobSourceFactory)` em `GET /api/criteria`, `GET /api/opportunities/compatibility-status`, `GET /api/home`, `GET /api/opportunities`, `GET /api/opportunities/{id}`, `PUT /api/criteria` e `POST /api/opportunities/reassess`).
 - **E2E isolado (`profile-compatibility.spec.ts`)**: `npm run test:e2e -- profile-compatibility.spec.ts` com `CURRICULOTRON_E2E_PORT=18447` e `CURRICULOTRON_URL` ausente passou **`12 passed (47.0s)`** nos dois viewports (`mobile-360` e `desktop-1280`), cobrindo US1, US2, troca Java→Python, legado/parcial, falha HTTP 500 + retry real, `10` consumidas com `5` visíveis (`5/10`), candidaturas/descartes intactos, ausência de requisições externas ao host local e persistência dos critérios, histórico e recuperação `running → failed/interrupted` após reinício real de instância isolada em SQLite descartável.
-- **Checks de frontend da T029**: `eslint .` e `prettier --check tests/e2e/profile-compatibility.spec.ts tests/e2e/support/seed.ts` passaram após a última edição. (Os checks completos da suíte Java/frontend/benchmark/CI seguem nas tarefas T031–T034.)
+- **Checks de frontend da T029**: `eslint .` e `prettier --check tests/e2e/profile-compatibility.spec.ts tests/e2e/support/seed.ts` passaram após a última edição.
+
+## Resultados registrados — T031 (Benchmark controlado de 1.000 anúncios)
+
+- **Cenário e código**: [`CompatibilityPerformanceTest.java`](../../backend/src/test/java/dev/curriculotron/opportunities/CompatibilityPerformanceTest.java) (`readsStayUnder2sAndFullReassessmentUnder10sAcrossOneThousandPostings`), executado sobre SQLite real temporário (`SQLite 3.54.1` com Flyway v1–v13 e `WriteExecutor`).
+- **Volume e tamanho de texto**: `1.000` oportunidades não fundidas (`20` marcadas como `discarded`, `10` selecionadas em `daily_selection` e fontes simuladas distribuídas entre `lever:bench`, `gupy:bench` e `greenhouse:bench`), somando `924.600` caracteres (`~924` caracteres por vaga) distribuídos em 5 perfis distintos (Java completo, Python com negação de Java, Product Designer com menção incidental, Fullstack React/Angular e legado parcial).
+- **Ambiente/hardware**: `Windows 11` (`amd64`), `AMD Ryzen 9 7900 12-Core Processor` (`12` núcleos / `24` processadores lógicos), `15,2 GB` RAM, `Java 25.0.5`.
+- **Medições obtidas**:
+  - Reavaliação inicial (`criteriaVersion = 1`, 1.000 vagas sem avaliação prévia, lotes de 100): **`3.309 ms`** (`<= 10.000 ms`).
+  - Reavaliação após troca de critérios para Python (`criteriaVersion = 2`, 1.000 vagas reclassificadas): **`1.717 ms`** (`<= 10.000 ms`).
+  - Leituras antes da troca (`GET /api/home`: **`61 ms`**, `selection`: **`21 ms`**, `secondary`: **`419 ms`**, `discarded`: **`22 ms`**, `detail`: **`7 ms`**) — todas `<= 2.000 ms`.
+  - Leituras após troca para Python (`GET /api/home`: **`8 ms`**, `selection`: **`8 ms`**, `secondary`: **`186 ms`**, `detail`: **`3 ms`**) — todas `<= 2.000 ms`.
+- **Conclusão do benchmark**: todas as metas do plano (`<= 2 s` em leitura e `<= 10 s` em reavaliação completa) foram cumpridas sem necessidade de índices extras ou alterações adicionais em consultas/lotes.
 
