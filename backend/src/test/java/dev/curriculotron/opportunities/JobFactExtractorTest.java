@@ -47,4 +47,50 @@ class JobFactExtractorTest {
     assertThat(f.region()).isEqualTo("RM Porto Alegre");
     assertThat(f.seniority()).isEqualTo("senior");
   }
+
+  @Test
+  void distinguishesCFromCPlusPlusAndCSharp() {
+    var cppAndSharp =
+        extractor.extract(
+            "Backend Developer C++",
+            "X",
+            null,
+            "Requirements: C++ and C#.",
+            Set.of(" C ", ".NET"),
+            regions);
+    assertThat(cppAndSharp.stackFacts()).isEmpty();
+
+    var exactC =
+        extractor.extract(
+            "Backend Developer C",
+            "X",
+            null,
+            "Requirements: C and .NET.",
+            Set.of(" C ", ".NET"),
+            regions);
+    assertThat(exactC.stackFacts()).containsExactlyInAnyOrder("C", ".NET");
+  }
+
+  @Test
+  void ignoresNegatedIncidentalAndMismatchedVersionMentions() {
+    var negatedAndIncidental =
+        extractor.extract(
+            "Service Designer",
+            "CWI",
+            null,
+            "Não utilizamos Java. Outra equipe usa Spring Boot. About the company: Kafka.",
+            stack,
+            regions);
+    assertThat(negatedAndIncidental.stackFacts()).isEmpty();
+
+    var versionMismatch =
+        extractor.extract(
+            "Backend Developer Java",
+            "CI&T",
+            null,
+            "Requirements: Java 21.",
+            Set.of("Java 17"),
+            regions);
+    assertThat(versionMismatch.stackFacts()).isEmpty();
+  }
 }

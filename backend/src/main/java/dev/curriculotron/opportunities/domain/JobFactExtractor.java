@@ -64,12 +64,39 @@ public final class JobFactExtractor {
     String nText = normalize(text);
 
     var stack = new LinkedHashSet<String>();
-    for (String keyword : stackKeywords) {
-      String k = normalize(keyword);
-      if (k.isBlank()) continue;
-      if (Pattern.compile("(?<![a-z0-9])" + Pattern.quote(k) + "(?![a-z0-9])")
-          .matcher(nTitle + "\n" + nText)
-          .find()) stack.add(keyword);
+    var ordered = stackKeywords.stream().map(String::strip).filter(k -> !k.isBlank()).toList();
+    if (!ordered.isEmpty()) {
+      var probe =
+          new VacancyEvidence(
+              "extract",
+              "extract",
+              null,
+              "extract",
+              title,
+              location,
+              text,
+              VacancyEvidence.Completeness.unknown,
+              null,
+              1,
+              null,
+              null);
+      var evidence = new TechnologyMatcher().match(List.of(probe), ordered).evidence();
+      for (String keyword : ordered) {
+        boolean hasNegative =
+            evidence.stream()
+                .anyMatch(ev ->
+                    keyword.equals(ev.matchedCriterion())
+                        && ev.mentionKind() == CompatibilityAssessment.MentionKind.negated);
+        boolean hasLiteralMention =
+            evidence.stream()
+                .anyMatch(ev ->
+                    keyword.equals(ev.matchedCriterion())
+                        && ev.mentionKind() != CompatibilityAssessment.MentionKind.negated
+                        && ev.mentionKind() != CompatibilityAssessment.MentionKind.incidental
+                        && (ev.configuredVersion() == null
+                            || ev.configuredVersion().equals(ev.observedVersion())));
+        if (!hasNegative && hasLiteralMention) stack.add(keyword);
+      }
     }
 
     boolean role = DEV_ROLE.matcher(nTitle).find() && ROLE_FOCUS.matcher(nTitle).find();
