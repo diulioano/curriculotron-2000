@@ -21,6 +21,11 @@ export function colorJob(companyName: string, id = 'color-0') {
       technologyStatus: 'matched' as const,
       reasonCodes: ['role_matched', 'technology_matched'],
     },
+    compatibilityEvidence: [],
+    compatibilityCriteria: {
+      targetRoles: ['Desenvolvedor Java'],
+      stackKeywords: ['Java', 'Spring Boot'],
+    },
     facts: ['Java'],
     inferred: [],
     missing: ['Salário'],

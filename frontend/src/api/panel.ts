@@ -7,9 +7,23 @@ import {
   type OpportunitySummary,
   type RefreshStatus,
 } from './compatibility';
+import {
+  parseOpportunityDetail,
+  type CompatibilityCriteriaSnapshot,
+  type CompatibilityEvidenceItem,
+  type OpportunityDetailData,
+} from './compatibility-detail';
 import type { IntegrationState } from '../components/StatusBadge';
 
-export type { CompatibilitySummary, OpportunityListResponse, OpportunitySummary, RefreshStatus };
+export type {
+  CompatibilityCriteriaSnapshot,
+  CompatibilityEvidenceItem,
+  CompatibilitySummary,
+  OpportunityDetailData,
+  OpportunityListResponse,
+  OpportunitySummary,
+  RefreshStatus,
+};
 
 export interface ListResult<T> {
   items: T[];
@@ -76,6 +90,8 @@ export interface OpportunitySource {
   fetchedAt: string;
 }
 export interface OpportunityDetail extends Opportunity {
+  compatibilityEvidence?: CompatibilityEvidenceItem[];
+  compatibilityCriteria?: CompatibilityCriteriaSnapshot | null;
   facts: string[];
   inferred: string[];
   missing: string[];
@@ -157,8 +173,10 @@ export const panel = {
     parseOpportunityListResponse(
       await api<unknown>(`/api/opportunities?list=${encodeURIComponent(list)}`, { signal }),
     ),
-  opportunity: (id: string, signal?: AbortSignal) =>
-    api<OpportunityDetail>(`/api/opportunities/${encodeURIComponent(id)}`, { signal }),
+  opportunity: async (id: string, signal?: AbortSignal): Promise<OpportunityDetailData> =>
+    parseOpportunityDetail(
+      await api<unknown>(`/api/opportunities/${encodeURIComponent(id)}`, { signal }),
+    ),
   applications: (signal?: AbortSignal) =>
     api<ListResult<Application>>('/api/applications', { signal }),
   application: (id: string, signal?: AbortSignal) =>

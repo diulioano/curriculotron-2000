@@ -23,6 +23,11 @@ const opportunity = {
     technologyStatus: 'matched',
     reasonCodes: ['role_matched', 'technology_matched'],
   },
+  compatibilityEvidence: [],
+  compatibilityCriteria: {
+    targetRoles: ['Desenvolvedor Java'],
+    stackKeywords: ['Java', 'Spring Boot'],
+  },
   facts: ['Java obrigatório'],
   inferred: ['Angular pode ser desejável'],
   missing: ['Salário'],

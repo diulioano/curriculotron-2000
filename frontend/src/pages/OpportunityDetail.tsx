@@ -1,7 +1,8 @@
-﻿import type { CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import { panel, post, type OpportunityDetail as Detail, type TaskRun } from '../api/panel';
+import { CompatibilityEvidence } from '../components/CompatibilityEvidence';
 import { Deadline } from '../components/Deadline';
 import { SalaryEstimate } from '../components/SalaryEstimate';
 import { MutationFeedback, QueryState } from '../components/Panel';
@@ -97,7 +98,9 @@ export function OpportunityDetail() {
             <div className="job-detail-main">
               <Summary item={item} />
 
-              {item.fitReasons.length > 0 && (
+              <CompatibilityEvidence item={item} />
+
+              {item.fitReasons.length > 0 && Boolean(item.compatibility?.current) && (
                 <section className="why sk" aria-labelledby="por-que">
                   <h2 id="por-que">Por que recomendei</h2>
                   {item.fitReasons.map((reason, i) => (
