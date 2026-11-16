@@ -108,4 +108,21 @@ Revisão por agente deve registrar arquivo, evidência, impacto e severidade por
   2. Reavaliação síncrona em lotes de até `100` vagas no SQLite local (até `3` passagens de reconciliação); `CompatibilityJpaRepository.updateFit` não usa `clearAutomatically = true` (`Low`, sem erro atual pois inputs são lidos antes da transação de escrita).
   3. Mutações individuais de cartão (`OpportunityCard`: descartar/restaurar/candidatar) e fusão (`DedupeReview`) usam invalidação pontual em vez de `invalidateAfterOpportunityChange()` (`Medium`, fora do escopo mínimo de `PUT /api/criteria` e `POST /api/opportunities/reassess`), e `glassdoorUrl` confia na validação de escrita no backend sem repetir `safeUrl` no componente (`Nit`).
   4. Source set backend `integrationTest` continua vazia (`NO-SOURCE`; provas SQLite residem em `src/test`); no Windows com `core.autocrlf = true`, `npm run format:check` reporta CRLF em `9` arquivos pré-existentes não editados (`prettier --check` passa nos `17` arquivos da feature `004`).
-  5. Execução remota de workflows CI e revisão do agente no Git pendentes de comprovação pós-`push`/PR na **T034** (não declaradas ativas antes do envio).
+  5. Execução remota de workflows CI e revisão do agente no Git comprovada pós-`push`/PR na seção **T034** abaixo.
+
+## Resultados registrados — T034 (Entrega Git, CI remota e revisão por agente)
+
+- **Pull Request**: [`#5`](https://github.com/diulioano/curriculotron-2000/pull/5) (`feature/US-004-respeitar-tecnologias-perfil` → `main`).
+- **Histórico de correções e validação remota na branch**:
+  - No envio inicial (`01e2757`), `backend-ci` e `frontend-ci` passaram, mas `SonarCloud Code Analysis` apontou `typescript:S7727` (`compatibility-detail.ts#L134`) e `shaka-review-notify.yml` falhou na inicialização (`pull_request_target`).
+  - Commit `a4446d5`: envolvidos os callbacks de `.map(...)` em funções seta em `frontend/src/api/compatibility-detail.ts`; os checks locais de frontend foram reexecutados (`prettier --check`, `npm run lint`, `npm run test:coverage` com `99/99`, `check-changed-coverage` com `459/499` = `91,98%`, `npm run build` e `npm run test:frontend` com `38/38`), e `openbotgit[bot]` (Shaka) publicou veredicto **`APPROVED`** para `a4446d5`.
+  - Commits `0bd7fc5`, `65c32da` e `17a256f`: ajustado `.github/workflows/shaka-review-notify.yml` para `pull_request` (`opened`, `reopened`, `synchronize`) com permissões `issues: write` e `pull-requests: write`.
+- **Estado remoto comprovado no head `17a256f004cb335ee97d55e81816aac5996a2126`**:
+  - **`backend-ci` (`build`)**: **`success`** ([run 43910800576](https://github.com/diulioano/curriculotron-2000/actions/runs/43910800576/job/133452011124)).
+  - **`frontend-ci` (`build`)**: **`success`** ([run 43910801307](https://github.com/diulioano/curriculotron-2000/actions/runs/43910801307/job/133451897187)).
+  - **`notify-shaka` (`Notify Shaka about new pull requests`)**: **`success`** ([run 43910800642](https://github.com/diulioano/curriculotron-2000/actions/runs/43910800642/job/133451844181)).
+  - **`SonarCloud Code Analysis`**: **`success`** (`Quality Gate passed`, `0` novos issues, `0` hotspots, [check 133452139709](https://github.com/diulioano/curriculotron-2000/runs/133452139709)).
+  - **Revisão por agente no Git (`openbotgit[bot]` / Shaka)**: **`APPROVED`** para o SHA `17a256f004cb335ee97d55e81816aac5996a2126` (`mergeable=True`, `mergeable_state=clean`).
+- **Distinção local vs. remoto**:
+  - **Local**: `spotlessCheck` + `205/205` JUnit em `src/test` (incluindo SQLite real temporário e benchmark `1.000` vagas), `:integrationTest` `NO-SOURCE`, `99/99` Vitest (`91,98%` de cobertura nas linhas alteradas após `a4446d5`), `38/38` Playwright mockado e `12/12` Playwright E2E isolado (`profile-compatibility.spec.ts`).
+  - **Remoto**: `backend-ci`, `frontend-ci`, `notify-shaka`, `SonarCloud Code Analysis` e revisão `openbotgit[bot]` aprovados no GitHub para o último head de código/CI (`17a256f`), seguido apenas deste registro documental em `specs/`.
