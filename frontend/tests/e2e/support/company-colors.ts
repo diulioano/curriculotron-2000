@@ -1,4 +1,4 @@
-﻿import type { Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 export function colorJob(companyName: string, id = 'color-0') {
   return {
@@ -12,6 +12,15 @@ export function colorJob(companyName: string, id = 'color-0') {
     fitReasons: ['Java e Spring'],
     userDecision: 'none' as 'none' | 'discarded' | 'applied',
     availability: 'unconfirmed' as const,
+    compatibility: {
+      criteriaVersion: 1,
+      evaluatorVersion: 1,
+      assessedAt: '2026-11-15T10:00:00Z',
+      current: true,
+      roleStatus: 'matched' as const,
+      technologyStatus: 'matched' as const,
+      reasonCodes: ['role_matched', 'technology_matched'],
+    },
     facts: ['Java'],
     inferred: [],
     missing: ['Salário'],
@@ -42,6 +51,17 @@ export function colorState() {
   return { items: colorJobs(), reversed: false, subset: false };
 }
 
+const readyAssessment = {
+  criteriaVersion: 1,
+  state: 'ready' as const,
+  stale: false,
+  assessedCount: 13,
+  remainingCount: 0,
+  startedAt: null,
+  finishedAt: '2026-11-15T10:00:00Z',
+  errorCode: null,
+};
+
 export async function mockCompanyColors(page: Page, state = colorState()) {
   await page.route('**/api/**', async (route) => {
     const request = route.request();
@@ -54,7 +74,14 @@ export async function mockCompanyColors(page: Page, state = colorState()) {
     } else if (path === '/api/home') {
       data = {
         dataAsOf: null,
-        selectionToday: { localDate: '2026-11-15', count: active.length, limit: 20, items: active },
+        assessment: readyAssessment,
+        selectionToday: {
+          localDate: '2026-11-15',
+          count: active.length,
+          consumedCount: active.length,
+          limit: 20,
+          items: active,
+        },
         integrations: [],
         applicationsWithNextActions: [],
         mailNeedingAttention: [],
@@ -68,7 +95,7 @@ export async function mockCompanyColors(page: Page, state = colorState()) {
       let items = state.items.filter((item) => (item.userDecision === 'discarded') === discarded);
       if (state.reversed) items = items.toReversed();
       if (state.subset) items = items.filter((_, i) => i % 2 === 0);
-      data = { items, dataAsOf: null };
+      data = { items, dataAsOf: null, assessment: readyAssessment };
     } else {
       const match = path.match(/^\/api\/opportunities\/([^/]+)(?:\/(discard|restore|applied))?$/);
       const item = state.items.find((item) => item.id === match?.[1]);

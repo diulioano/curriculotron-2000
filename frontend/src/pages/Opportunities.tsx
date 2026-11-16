@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router';
 import { api } from '../api/client';
+import { describeRefreshStatus } from '../api/compatibility';
 import { panel, post } from '../api/panel';
 import { DataAsOf } from '../components/DataAsOf';
 import { Empty, MutationFeedback, PageHeader, QueryState } from '../components/Panel';
@@ -182,6 +183,16 @@ export function Opportunities() {
       {query.data && (
         <>
           <DataAsOf at={query.data.dataAsOf} />
+          {(() => {
+            const warning = describeRefreshStatus(query.data.assessment);
+            return (
+              warning && (
+                <div className="notice dsh" role="status">
+                  {warning} <Link to="/criterios">Ver critérios →</Link>
+                </div>
+              )
+            );
+          })()}
           {query.data.items.length ? (
             <div className="jobs-grid">
               {query.data.items.map((item) => (
@@ -189,7 +200,17 @@ export function Opportunities() {
               ))}
             </div>
           ) : (
-            <Empty>Nenhuma vaga nesta lista.</Empty>
+            <Empty>
+              Nenhuma vaga nesta lista.
+              {query.data.assessment.stale &&
+                query.data.assessment.remainingCount > 0 &&
+                list !== 'discarded' && (
+                  <>
+                    {' '}
+                    Vagas com avaliação pendente ou desatualizada ficam ocultas até a atualização.
+                  </>
+                )}
+            </Empty>
           )}
         </>
       )}

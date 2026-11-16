@@ -1,4 +1,4 @@
-﻿.stack {
+.stack {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -155,6 +155,29 @@
   font-size: 16px;
   line-height: 1.35;
   color: var(--ink-soft);
+}
+.job-compatibility {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 4px 8px;
+  align-self: flex-start;
+  border: 1.5px solid var(--ink);
+  overflow-wrap: anywhere;
+}
+.job-compatibility.compatibility-ok {
+  border-color: var(--ok);
+  color: var(--ok);
+  background: var(--card);
+}
+.job-compatibility.compatibility-warn {
+  border-color: var(--warn);
+  color: var(--warn);
+  background: #fff6c6;
+}
+.job-compatibility.compatibility-muted {
+  border-color: var(--line-soft);
+  color: var(--ink-muted);
+  background: var(--paper);
 }
 .job-deadline {
   font-weight: 700;

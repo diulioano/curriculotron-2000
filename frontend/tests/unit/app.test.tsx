@@ -23,7 +23,23 @@ describe('App', () => {
             ? { authenticated: true, setupRequired: false, csrfToken: 't', authMode: 'local' }
             : {
                 dataAsOf: null,
-                selectionToday: { count: 0, limit: 10, items: [] },
+                assessment: {
+                  criteriaVersion: 1,
+                  state: 'ready',
+                  stale: false,
+                  assessedCount: 0,
+                  remainingCount: 0,
+                  startedAt: null,
+                  finishedAt: null,
+                  errorCode: null,
+                },
+                selectionToday: {
+                  localDate: '2026-11-15',
+                  count: 0,
+                  consumedCount: 0,
+                  limit: 10,
+                  items: [],
+                },
                 integrations: [],
                 applicationsWithNextActions: [],
                 mailNeedingAttention: [],
@@ -80,7 +96,23 @@ describe('App', () => {
             ? { authenticated: true, setupRequired: false, csrfToken: 't' }
             : {
                 dataAsOf: null,
-                selectionToday: { count: 0, limit: 10, items: [] },
+                assessment: {
+                  criteriaVersion: 1,
+                  state: 'ready',
+                  stale: false,
+                  assessedCount: 0,
+                  remainingCount: 0,
+                  startedAt: null,
+                  finishedAt: null,
+                  errorCode: null,
+                },
+                selectionToday: {
+                  localDate: '2026-11-15',
+                  count: 0,
+                  consumedCount: 0,
+                  limit: 10,
+                  items: [],
+                },
                 integrations: [],
                 applicationsWithNextActions: [],
                 mailNeedingAttention: [],

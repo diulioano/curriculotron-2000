@@ -14,6 +14,15 @@ const opportunity = {
   fitReasons: ['Java e Spring'],
   userDecision: 'none',
   availability: 'unconfirmed',
+  compatibility: {
+    criteriaVersion: 1,
+    evaluatorVersion: 1,
+    assessedAt: '2026-11-14T10:00:00Z',
+    current: true,
+    roleStatus: 'matched',
+    technologyStatus: 'matched',
+    reasonCodes: ['role_matched', 'technology_matched'],
+  },
   facts: ['Java obrigatório'],
   inferred: ['Angular pode ser desejável'],
   missing: ['Salário'],
@@ -41,7 +50,20 @@ function mount(path: string, fail = false) {
       status = 404;
       body = { error: { code: 'not_ready', message: 'Serviço indisponível.' } };
     } else if (input.startsWith('/api/opportunities?'))
-      body = { items: [opportunity], dataAsOf: null };
+      body = {
+        items: [opportunity],
+        dataAsOf: null,
+        assessment: {
+          criteriaVersion: 1,
+          state: 'ready',
+          stale: false,
+          assessedCount: 1,
+          remainingCount: 0,
+          startedAt: null,
+          finishedAt: '2026-11-14T10:00:00Z',
+          errorCode: null,
+        },
+      };
     else if (init?.method === 'POST') body = {};
     return new Response(JSON.stringify(body), {
       status,

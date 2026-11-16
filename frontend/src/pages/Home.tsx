@@ -1,6 +1,7 @@
-﻿import type { CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
+import { describeRefreshStatus } from '../api/compatibility';
 import { panel, type Application, type HomeData, type Integration } from '../api/panel';
 import { Empty, QueryState } from '../components/Panel';
 import { OpportunityCard, type CardLayout } from '../components/OpportunityCard';
@@ -113,6 +114,17 @@ export function Home() {
       <QueryState pending={query.isPending} error={query.error} retry={query.refetch} />
 
       {data && <MobileAlerts integrations={data.integrations} />}
+      {data &&
+        (() => {
+          const warning = describeRefreshStatus(data.assessment);
+          return (
+            warning && (
+              <div className="notice dsh" role="status">
+                {warning} <Link to="/criterios">Ver critérios →</Link>
+              </div>
+            )
+          );
+        })()}
 
       {data && (
         <div className="home-columns">
@@ -124,10 +136,13 @@ export function Home() {
                   {data.selectionToday.count}/{data.selectionToday.limit}
                 </span>
               </h2>
-              <p className="muted">
-                {data.selectionToday.count < data.selectionToday.limit &&
-                  `Só ${data.selectionToday.count} passaram no filtro hoje — não completamos até ${data.selectionToday.limit}. `}
-                <Link to="/vagas?list=secondary">Ver a lista secundária →</Link>
+              <p className="muted home-consumption">
+                Seleção de hoje: consumidas {data.selectionToday.consumedCount} de{' '}
+                {data.selectionToday.limit}
+                {data.selectionToday.count !== data.selectionToday.consumedCount
+                  ? ` (${data.selectionToday.count} visível(is) agora)`
+                  : ''}
+                . <Link to="/vagas?list=secondary">Ver a lista secundária →</Link>
               </p>
             </div>
             {data.selectionToday.items.length ? (

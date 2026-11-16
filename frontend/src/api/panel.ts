@@ -1,5 +1,15 @@
 import { api } from './client';
+import {
+  parseHomeData,
+  parseOpportunityListResponse,
+  type CompatibilitySummary,
+  type OpportunityListResponse,
+  type OpportunitySummary,
+  type RefreshStatus,
+} from './compatibility';
 import type { IntegrationState } from '../components/StatusBadge';
+
+export type { CompatibilitySummary, OpportunityListResponse, OpportunitySummary, RefreshStatus };
 
 export interface ListResult<T> {
   items: T[];
@@ -32,6 +42,7 @@ export interface Opportunity {
   source?: OpportunitySource | null;
   /** Nível da empresa, quando o serviço informar. */
   companyTier?: 'priority' | 'suggested' | null;
+  compatibility?: CompatibilitySummary;
 }
 export interface SalaryObservation {
   id: string;
@@ -106,8 +117,15 @@ export interface ApplicationDetail extends Application {
 }
 export interface HomeData {
   dataAsOf: string | null;
+  assessment: RefreshStatus;
   integrations: Integration[];
-  selectionToday: { localDate: string; count: number; limit: number; items: Opportunity[] };
+  selectionToday: {
+    localDate: string;
+    count: number;
+    consumedCount: number;
+    limit: number;
+    items: OpportunitySummary[];
+  };
   applicationsWithNextActions: Application[];
   mailNeedingAttention: { id: string; subject: string }[];
   reviewQueueCount: number;
@@ -133,9 +151,12 @@ export interface TaskRun {
   errorSummary: string | null;
 }
 export const panel = {
-  home: (signal?: AbortSignal) => api<HomeData>('/api/home', { signal }),
-  opportunities: (list: string, signal?: AbortSignal) =>
-    api<ListResult<Opportunity>>(`/api/opportunities?list=${encodeURIComponent(list)}`, { signal }),
+  home: async (signal?: AbortSignal): Promise<HomeData> =>
+    parseHomeData(await api<unknown>('/api/home', { signal })),
+  opportunities: async (list: string, signal?: AbortSignal): Promise<OpportunityListResponse> =>
+    parseOpportunityListResponse(
+      await api<unknown>(`/api/opportunities?list=${encodeURIComponent(list)}`, { signal }),
+    ),
   opportunity: (id: string, signal?: AbortSignal) =>
     api<OpportunityDetail>(`/api/opportunities/${encodeURIComponent(id)}`, { signal }),
   applications: (signal?: AbortSignal) =>
