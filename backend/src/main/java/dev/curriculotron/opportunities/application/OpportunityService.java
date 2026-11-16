@@ -3,18 +3,22 @@ package dev.curriculotron.opportunities.application;
 import dev.curriculotron.audit.application.*;
 import dev.curriculotron.audit.domain.ActivityEntry;
 import dev.curriculotron.opportunities.application.port.out.*;
+import dev.curriculotron.opportunities.domain.CompatibilityAssessment;
 import dev.curriculotron.opportunities.domain.Opportunity;
 import dev.curriculotron.shared.*;
 import dev.curriculotron.shared.persistence.WriteExecutor;
 import dev.curriculotron.sources.ManualSource;
+import dev.curriculotron.sources.SearchCriteriaRepository;
 import java.time.LocalDate;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OpportunityService {
   private final OpportunityRepository jobs;
   private final SelectionRepository selections;
+  private final SearchCriteriaRepository criteria;
   private final WriteExecutor writer;
   private final AppClock clock;
   private final ActivityLogService activity;
@@ -24,6 +28,7 @@ public class OpportunityService {
   public OpportunityService(
       OpportunityRepository jobs,
       SelectionRepository selections,
+      SearchCriteriaRepository criteria,
       WriteExecutor writer,
       AppClock clock,
       ActivityLogService activity,
@@ -31,6 +36,7 @@ public class OpportunityService {
       OpportunityIngestionService ingestion) {
     this.jobs = jobs;
     this.selections = selections;
+    this.criteria = criteria;
     this.writer = writer;
     this.clock = clock;
     this.activity = activity;
@@ -43,14 +49,16 @@ public class OpportunityService {
         .orElseThrow(() -> new java.util.NoSuchElementException("Vaga não encontrada"));
   }
 
+  @Transactional(readOnly = true)
   public List<Opportunity> list(String kind, LocalDate date) {
     if ("discarded".equals(kind)) return jobs.discarded();
+    if (!"selection".equals(kind) && !"secondary".equals(kind))
+      throw new IllegalArgumentException("Lista inválida");
+    long version = criteria.current().version();
     List<String> ids =
-        switch (kind) {
-          case "selection" -> selections.selected(date);
-          case "secondary" -> selections.secondary();
-          default -> throw new IllegalArgumentException("Lista inválida");
-        };
+        "selection".equals(kind)
+            ? selections.visibleSelected(date, version, CompatibilityAssessment.EVALUATOR_VERSION)
+            : selections.secondary(version, CompatibilityAssessment.EVALUATOR_VERSION);
     return ids.stream()
         .map(this::get)
         .filter(job -> job.mergedInto() == null)

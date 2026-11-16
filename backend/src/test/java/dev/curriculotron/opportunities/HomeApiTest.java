@@ -5,10 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import dev.curriculotron.opportunities.application.DailySelectionService;
-import dev.curriculotron.opportunities.application.port.out.OpportunityRepository;
-import dev.curriculotron.opportunities.application.port.out.OpportunityRepository.SourcedOpportunity;
+import dev.curriculotron.opportunities.application.OpportunityIngestionService;
 import dev.curriculotron.shared.AppClock;
-import dev.curriculotron.shared.persistence.WriteExecutor;
+import dev.curriculotron.sources.JobSource;
 import dev.curriculotron.support.*;
 import java.time.Clock;
 import java.time.Instant;
@@ -21,9 +20,8 @@ import org.springframework.test.web.servlet.MockMvc;
 /** T047 — página inicial (FR-016, US5-4). */
 class HomeApiTest extends AppTestBase {
   @Autowired MockMvc mvc;
-  @Autowired OpportunityRepository jobs;
+  @Autowired OpportunityIngestionService ingestion;
   @Autowired DailySelectionService selections;
-  @Autowired WriteExecutor writer;
   @Autowired AppClock clock;
 
   @Test
@@ -44,18 +42,15 @@ class HomeApiTest extends AppTestBase {
         .andExpect(jsonPath("$.reviewQueueCount").value(0))
         .andExpect(jsonPath("$.missedRoutines").isArray());
 
-    writer.run(() ->
-        jobs.createFromSource(
-            new SourcedOpportunity(
-                "Desenvolvedor Java",
-                "CI&T",
-                "Remoto",
-                "remote",
-                List.of("Java"),
-                "strong",
-                90,
-                List.of("Java e Spring no perfil")),
-            "2026-11-14T14:00:00Z"));
+    ingestion.ingest(
+        new JobSource.Item(
+            "lever:ciandt",
+            "ciandt-home-1",
+            "https://jobs.lever.co/ciandt/ciandt-home-1",
+            "Requisitos: Java e Spring Boot\nRemoto",
+            "Desenvolvedor Java",
+            "Remoto"),
+        "CI&T");
     selections.selectToday();
     for (String url : List.of("https://one.test/job", "https://two.test/job"))
       mvc.perform(

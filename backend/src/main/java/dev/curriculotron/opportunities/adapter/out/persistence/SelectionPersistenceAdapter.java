@@ -19,13 +19,18 @@ class SelectionPersistenceAdapter implements SelectionRepository {
   }
 
   @Override
-  public List<String> eligible(int limit) {
-    return selections.eligible().stream().limit(limit).toList();
+  public List<String> visibleSelected(LocalDate date, long criteriaVersion, int evaluatorVersion) {
+    return selections.visibleSelected(date.toString(), criteriaVersion, evaluatorVersion);
   }
 
   @Override
-  public List<String> secondary() {
-    return selections.secondary();
+  public List<String> eligible(long criteriaVersion, int evaluatorVersion, int limit) {
+    return selections.eligible(criteriaVersion, evaluatorVersion).stream().limit(limit).toList();
+  }
+
+  @Override
+  public List<String> secondary(long criteriaVersion, int evaluatorVersion) {
+    return selections.secondary(criteriaVersion, evaluatorVersion);
   }
 
   @Override
