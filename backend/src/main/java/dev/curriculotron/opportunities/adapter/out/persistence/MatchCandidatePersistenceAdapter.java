@@ -56,13 +56,14 @@ class MatchCandidatePersistenceAdapter implements MatchCandidateRepository {
     } else {
       survivor.setDecision(survivor.userDecision(), at);
     }
+    survivor.invalidateEvidence();
     merged.mergeInto(a, at);
-    opportunities.saveAll(List.of(survivor, merged));
+    opportunities.saveAllAndFlush(List.of(survivor, merged));
 
     sources.moveToSurvivor(a, b);
     urlIdentities.moveToSurvivor(a, b);
     externalIdentities.moveToSurvivor(a, b);
-    if (evidence.moveToSurvivor(a, b) > 0) evidence.invalidate(a);
+    evidence.moveToSurvivor(a, b);
     candidates.rejectOpenForMerged(b, at);
     return true;
   }

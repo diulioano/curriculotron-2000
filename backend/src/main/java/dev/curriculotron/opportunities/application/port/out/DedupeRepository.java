@@ -9,7 +9,7 @@ public interface DedupeRepository {
 
   Optional<String> byUrl(String url);
 
-  void attach(
+  boolean attach(
       String opportunityId,
       String source,
       String externalId,

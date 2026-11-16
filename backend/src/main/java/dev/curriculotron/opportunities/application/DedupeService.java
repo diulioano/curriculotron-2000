@@ -1,6 +1,7 @@
 package dev.curriculotron.opportunities.application;
 
 import dev.curriculotron.opportunities.application.port.out.DedupeRepository;
+import dev.curriculotron.opportunities.application.port.out.EvidenceRepository;
 import dev.curriculotron.opportunities.domain.CanonicalUrl;
 import dev.curriculotron.shared.AppClock;
 import dev.curriculotron.shared.persistence.WriteExecutor;
@@ -12,11 +13,17 @@ public class DedupeService {
   public record IngestResult(String opportunityId, boolean sourceConflict) {}
 
   private final DedupeRepository repository;
+  private final EvidenceRepository evidence;
   private final WriteExecutor writer;
   private final AppClock clock;
 
-  public DedupeService(DedupeRepository repository, WriteExecutor writer, AppClock clock) {
+  public DedupeService(
+      DedupeRepository repository,
+      EvidenceRepository evidence,
+      WriteExecutor writer,
+      AppClock clock) {
     this.repository = repository;
+    this.evidence = evidence;
     this.writer = writer;
     this.clock = clock;
   }
@@ -42,8 +49,14 @@ public class DedupeService {
         repository.suggest(byExternal.get(), byUrl.get(), clock.now());
         return new IngestResult(byExternal.get(), true);
       }
-      String id = byExternal.or(() -> byUrl).orElseGet(create);
-      repository.attach(id, source, external, canonical, excerpt, clock.now());
+      var matched = byExternal.or(() -> byUrl);
+      boolean existed = matched.isPresent();
+      String id = matched.orElseGet(create);
+      boolean attachedNew =
+          repository.attach(id, source, external, canonical, excerpt, clock.now());
+      if (existed && attachedNew) {
+        evidence.invalidate(id);
+      }
       for (String similar : repository.similar(id)) repository.suggest(id, similar, clock.now());
       return new IngestResult(id, false);
     });

@@ -42,14 +42,17 @@ class DedupePersistenceAdapter implements DedupeRepository {
   }
 
   @Override
-  public void attach(
+  public boolean attach(
       String id, String source, String externalId, String url, String excerpt, Instant at) {
+    boolean changed = false;
     if (!urlIdentities.existsById(url)) {
       urlIdentities.save(new UrlIdentityEntity(url, id));
+      changed = true;
     }
     if (externalId != null
         && !externalIdentities.existsById(new ExternalIdentityId(source, externalId))) {
       externalIdentities.save(new ExternalIdentityEntity(source, externalId, id));
+      changed = true;
     }
 
     var existing =
@@ -67,7 +70,9 @@ class DedupePersistenceAdapter implements DedupeRepository {
       String instant = at.toString();
       sources.save(
           new OpportunitySourceEntity(Ids.newId(), id, source, externalId, url, instant, excerpt));
+      changed = true;
     }
+    return changed;
   }
 
   @Override

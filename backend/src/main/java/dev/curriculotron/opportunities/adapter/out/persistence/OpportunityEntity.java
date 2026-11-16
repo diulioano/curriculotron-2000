@@ -148,15 +148,65 @@ class OpportunityEntity {
   }
 
   void refreshDetails(String newTitle, String newLocation, String newWorkMode, String at) {
+    refreshDetails(newTitle, companyName, newLocation, newWorkMode, facts, at);
+  }
+
+  void refreshDetails(
+      String newTitle,
+      String newCompany,
+      String newLocation,
+      String newWorkMode,
+      List<String> newFacts,
+      String at) {
+    List<String> normalizedFacts = newFacts == null ? List.of() : List.copyOf(newFacts);
     if (!Objects.equals(title, newTitle)
+        || !Objects.equals(companyName, newCompany)
         || !Objects.equals(location, newLocation)
-        || !Objects.equals(workMode, newWorkMode)) {
+        || !Objects.equals(workMode, newWorkMode)
+        || !Objects.equals(facts, normalizedFacts)) {
       title = newTitle;
+      companyName = newCompany;
       location = newLocation;
       workMode = newWorkMode;
+      facts = normalizedFacts;
       evidenceRevision++;
       updatedAt = at;
     }
+  }
+
+  void updateCompensation(
+      String newContractType,
+      BigDecimal newSalaryMin,
+      BigDecimal newSalaryMax,
+      String newSalaryUnit,
+      String at) {
+    if (!Objects.equals(contractType, newContractType)
+        || !Objects.equals(salaryMin, newSalaryMin)
+        || !Objects.equals(salaryMax, newSalaryMax)
+        || !Objects.equals(salaryUnit, newSalaryUnit)) {
+      contractType = newContractType;
+      salaryMin = newSalaryMin;
+      salaryMax = newSalaryMax;
+      salaryUnit = newSalaryUnit;
+      evidenceRevision++;
+      updatedAt = at;
+    }
+  }
+
+  void updateAvailability(String newAvailability, String at) {
+    if (!Objects.equals(availability, newAvailability)) {
+      availability = newAvailability;
+      evidenceRevision++;
+      updatedAt = at;
+    }
+  }
+
+  void invalidateEvidence() {
+    evidenceRevision++;
+  }
+
+  long evidenceRevision() {
+    return evidenceRevision;
   }
 
   String title() {
@@ -185,6 +235,10 @@ class OpportunityEntity {
   }
 
   void setDecision(String decision, String at) {
+    if ("none".equals(decision) && "discarded".equals(userDecision)) {
+      decisionRevertedAt = at;
+      evidenceRevision++;
+    }
     userDecision = decision;
     updatedAt = at;
   }

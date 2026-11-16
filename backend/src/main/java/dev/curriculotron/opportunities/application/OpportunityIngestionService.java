@@ -75,7 +75,14 @@ public final class OpportunityIngestionService {
           String stored = ingested.opportunityId();
           boolean hasDetails = item.title() != null || item.text() != null;
           if (hasDetails && !manual)
-            jobs.refreshDetails(stored, facts.title(), facts.location(), facts.workMode(), at);
+            jobs.refreshDetails(
+                stored,
+                facts.title(),
+                company,
+                facts.location(),
+                facts.workMode(),
+                JobFactExtractor.factList(facts),
+                at);
           String sourceId = manual ? null : sourceIdOf(item);
           if (hasDetails || evidence.forOpportunity(stored).isEmpty())
             evidence.upsert(

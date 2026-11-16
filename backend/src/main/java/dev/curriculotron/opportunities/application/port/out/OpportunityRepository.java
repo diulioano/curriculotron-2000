@@ -18,6 +18,17 @@ public interface OpportunityRepository {
 
   void refreshDetails(String id, String title, String location, String workMode, String at);
 
+  default void refreshDetails(
+      String id,
+      String title,
+      String company,
+      String location,
+      String workMode,
+      List<String> facts,
+      String at) {
+    refreshDetails(id, title, location, workMode, at);
+  }
+
   record SourcedOpportunity(
       String title,
       String company,

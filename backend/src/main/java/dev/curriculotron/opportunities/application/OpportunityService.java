@@ -11,14 +11,20 @@ import dev.curriculotron.sources.ManualSource;
 import dev.curriculotron.sources.SearchCriteriaRepository;
 import java.time.LocalDate;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OpportunityService {
+  private static final Logger log = LoggerFactory.getLogger(OpportunityService.class);
+
   private final OpportunityRepository jobs;
   private final SelectionRepository selections;
   private final SearchCriteriaRepository criteria;
+  private final EvidenceRepository evidence;
+  private final AssessOpportunityService assessor;
   private final WriteExecutor writer;
   private final AppClock clock;
   private final ActivityLogService activity;
@@ -29,6 +35,8 @@ public class OpportunityService {
       OpportunityRepository jobs,
       SelectionRepository selections,
       SearchCriteriaRepository criteria,
+      EvidenceRepository evidence,
+      AssessOpportunityService assessor,
       WriteExecutor writer,
       AppClock clock,
       ActivityLogService activity,
@@ -37,6 +45,8 @@ public class OpportunityService {
     this.jobs = jobs;
     this.selections = selections;
     this.criteria = criteria;
+    this.evidence = evidence;
+    this.assessor = assessor;
     this.writer = writer;
     this.clock = clock;
     this.activity = activity;
@@ -86,7 +96,13 @@ public class OpportunityService {
       get(id);
       if (!jobs.setDecision(id, decision, clock.now().toString()))
         throw new IllegalStateException("Vaga vinculada a candidatura não pode ser alterada aqui.");
+      if ("none".equals(decision)) {
+        evidence.invalidate(id);
+      }
       activity.record(ActivityEntry.user("opportunity." + decision, "opportunity", id));
     });
+    if ("none".equals(decision) && !assessor.assessAndSave(id)) {
+      log.warn("Avaliação não publicada após restauração opportunityId={}", id);
+    }
   }
 }
