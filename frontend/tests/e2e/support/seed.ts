@@ -52,6 +52,13 @@ export interface SeedJob {
   fit?: 'strong' | 'medium' | 'weak';
   fitReasons?: string[];
   decision?: 'none' | 'discarded' | 'applied';
+  applicationStatus?:
+    | 'submitted_awaiting'
+    | 'contact_received'
+    | 'interview'
+    | 'offer'
+    | 'closed_rejected'
+    | 'withdrawn';
   availability?: 'open' | 'closed' | 'unconfirmed';
   source?: { source: string; url: string; fetchedAt: string };
   selectedRank?: number;
@@ -63,6 +70,7 @@ export interface SeedJob {
 }
 
 export interface SeedOptions {
+  dbPath?: string;
   criteria?: {
     version: number;
     targetRoles: string[];
@@ -79,8 +87,9 @@ export interface SeedOptions {
 
 /** Substitui todas as vagas por um conjunto controlado (sem portais reais). */
 export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
-  if (!e2eDb) throw new Error('CURRICULOTRON_E2E_DB ausente');
-  const db = new DatabaseSync(e2eDb, { timeout: 10_000 });
+  const targetDb = options.dbPath ?? e2eDb;
+  if (!targetDb) throw new Error('CURRICULOTRON_E2E_DB ausente');
+  const db = new DatabaseSync(targetDb, { timeout: 10_000 });
   try {
     db.exec('PRAGMA foreign_keys = ON');
     db.exec('BEGIN IMMEDIATE');
@@ -154,6 +163,14 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
     const select = db.prepare(
       'INSERT INTO daily_selection(local_date,opportunity_id,rank,reason) VALUES (?,?,?,?)',
     );
+    const applicationInsert = db.prepare(
+      `INSERT INTO application(id,opportunity_id,confirmed_at,confirmation_origin,status,next_action,next_action_due_at,due_precision,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    );
+    const statusChangeInsert = db.prepare(
+      `INSERT INTO status_change(id,application_id,from_status,to_status,author,evidence_id,reason,at)
+       VALUES (?,?,?,?,?,?,?,?)`,
+    );
 
     let pendingCount = 0;
     let currentAssessedCount = 0;
@@ -182,6 +199,32 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
         at,
         at,
       );
+      if (job.decision === 'applied') {
+        const appId = `app-${job.id}`;
+        const appStatus = job.applicationStatus ?? 'submitted_awaiting';
+        applicationInsert.run(
+          appId,
+          job.id,
+          at,
+          'manual',
+          appStatus,
+          null,
+          null,
+          'ambiguous',
+          at,
+          at,
+        );
+        statusChangeInsert.run(
+          `sc-${job.id}-1`,
+          appId,
+          null,
+          appStatus,
+          'user',
+          null,
+          'Candidatura registrada antes da reavaliação',
+          at,
+        );
+      }
       let sourceId: string | null = null;
       if (job.source) {
         sourceId = `${job.id}-src`;
@@ -339,9 +382,40 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
   }
 }
 
+/** Simula reinício interrompido com refresh em estado running e opcionalmente remove uma avaliação. */
+export function simulateInterruptedRefresh(dbPath: string, unassessOpportunityId?: string) {
+  const db = new DatabaseSync(dbPath, { timeout: 10_000 });
+  try {
+    db.exec('PRAGMA foreign_keys = ON');
+    db.exec('BEGIN IMMEDIATE');
+    if (unassessOpportunityId) {
+      db.prepare('DELETE FROM opportunity_compatibility WHERE opportunity_id = ?').run(
+        unassessOpportunityId,
+      );
+    }
+    const at = new Date().toISOString();
+    db.prepare(
+      `UPDATE compatibility_refresh
+       SET state = 'running',
+           run_id = 'run-interrupted-e2e',
+           started_at = ?,
+           finished_at = NULL,
+           error_code = NULL,
+           remaining_count = CASE WHEN ? IS NOT NULL THEN remaining_count + 1 ELSE remaining_count END
+       WHERE id = 1`,
+    ).run(at, unassessOpportunityId ?? null);
+    db.exec('COMMIT');
+  } catch (e) {
+    if (db.isTransaction) db.exec('ROLLBACK');
+    throw e;
+  } finally {
+    db.close();
+  }
+}
+
 /** Primeiro uso define a senha; execuções seguintes (outro viewport) apenas entram. */
-export async function signIn(page: Page) {
-  await page.goto('/');
+export async function signIn(page: Page, baseUrl = '/') {
+  await page.goto(baseUrl);
   const heading = page.getByRole('heading', { level: 1 });
   await expect(heading).toBeVisible();
   const label = (await heading.textContent()) ?? '';

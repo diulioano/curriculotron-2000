@@ -1,9 +1,15 @@
+import { spawn } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { createServer } from 'node:net';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import {
   e2eDb,
   expectNoHorizontalOverflow,
   seedOpportunities,
   signIn,
+  simulateInterruptedRefresh,
   type SeedJob,
 } from './support/seed.ts';
 
@@ -578,3 +584,389 @@ test('US2.1–3 e 5 na ingestão real: nomes próximos, caixa/espaços, negaçã
   expect(fullText).not.toContain('Critério: Rust');
   await expectNoHorizontalOverflow(page);
 });
+
+test('US3: troca Java para Python, falha e retry, legado/parcial, 10 consumidas com 5 visíveis e histórico preservado', async ({
+  page,
+}) => {
+  const jobs: SeedJob[] = [];
+  for (let i = 1; i <= 5; i++) {
+    jobs.push({
+      id: `us3-sel-py-java-${i}`,
+      title: `Desenvolvedor Backend Pleno Python e Java ${i}`,
+      company: i % 2 === 0 ? 'CI&T' : 'PicPay',
+      workMode: 'remote',
+      fit: 'strong',
+      fitReasons: ['Java 17 compatível no critério v1.'],
+      descriptionText: 'Requisitos: Java 17, Spring Boot, Python 3 e FastAPI.',
+      selectedRank: i,
+    });
+  }
+  for (let i = 6; i <= 10; i++) {
+    jobs.push({
+      id: `us3-sel-java-only-${i}`,
+      title: `Desenvolvedor Backend Pleno Java Puro ${i}`,
+      company: 'BV',
+      workMode: 'remote',
+      fit: 'strong',
+      fitReasons: ['Java 17 compatível no critério v1.'],
+      descriptionText: 'Requisitos completos: Java 17 e Spring Boot em APIs.',
+      selectedRank: i,
+    });
+  }
+  jobs.push(
+    {
+      id: 'us3-legacy-python',
+      title: 'Desenvolvedor Backend Pleno Python Legado',
+      company: 'DB',
+      fit: 'medium',
+      descriptionText: 'Requisitos: Python 3 e FastAPI para microsserviços.',
+      compatibility: null,
+    },
+    {
+      id: 'us3-partial-python',
+      title: 'Desenvolvedor Backend Pleno Parcial',
+      company: 'CWI',
+      fit: 'medium',
+      descriptionCompleteness: 'partial',
+      descriptionText: 'Atuação em arquitetura distribuída de pagamentos.',
+      compatibility: {
+        criteriaVersion: 1,
+        roleStatus: 'matched',
+        technologyStatus: 'unknown',
+        reasonCodes: ['role_matched', 'technology_unknown_partial'],
+      },
+    },
+    {
+      id: 'us3-applied-java',
+      title: 'Engenheiro Java Candidatado',
+      company: 'CI&T',
+      fit: 'strong',
+      decision: 'applied',
+      descriptionText: 'Requisitos: Java 17 e Spring Boot.',
+    },
+    {
+      id: 'us3-discarded-java',
+      title: 'Desenvolvedor Java Descartado',
+      company: 'PicPay',
+      fit: 'strong',
+      decision: 'discarded',
+      descriptionText: 'Requisitos: Java 17.',
+    },
+  );
+
+  seedOpportunities(jobs, {
+    criteria: {
+      version: 1,
+      targetRoles: ['Desenvolvedor Backend Pleno'],
+      stackKeywords: ['Java', 'Spring Boot'],
+    },
+    refresh: { state: 'pending', assessedCount: 13, remainingCount: 1 },
+  });
+
+  await signIn(page);
+  const requests: string[] = [];
+  page.on('request', (req) => requests.push(req.url()));
+
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /Vagas do dia/ })).toContainText('10/10');
+  await expect(page.getByText(/consumidas 10 de 10/i)).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Desenvolvedor Backend Pleno Python e Java 1' }),
+  ).toBeVisible();
+
+  await page.goto('/criterios');
+  const stackField = page.getByLabel('Tecnologias (um por linha)');
+  await stackField.fill('Python\nFastAPI');
+  await page.getByRole('button', { name: 'Salvar critérios' }).click();
+  await expect(page.getByText('Critérios salvos.')).toBeVisible();
+  await expect(page.getByText('Critério v2', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Avaliação pendente para o critério v2' }),
+  ).toBeVisible();
+
+  await page.goto('/');
+  await expect(page.getByText(/critério v2/i)).toBeVisible();
+  await expect(page.getByText(/consumidas 10 de 10/i)).toBeVisible();
+  await expect(page.getByText('Desenvolvedor Backend Pleno Java Puro 6')).toHaveCount(0);
+
+  await page.goto('/criterios');
+  let failOnce = true;
+  await page.route('**/api/opportunities/reassess', async (route) => {
+    if (failOnce) {
+      failOnce = false;
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'reassessment_failed',
+            message: 'Falha simulada ao reavaliar vagas.',
+          },
+        }),
+      });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.getByRole('button', { name: 'Atualizar avaliação' }).click();
+  await expect(page.getByRole('alert')).toContainText('Falha simulada ao reavaliar vagas.');
+  await expect(page.getByText('Compatibilidade atualizada para o critério v2.')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Atualizar avaliação' }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Compatibilidade atualizada para o critério v2.' }),
+  ).toBeVisible();
+
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /Vagas do dia/ })).toContainText('5/10');
+  await expect(page.getByText(/consumidas 10 de 10/i)).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Desenvolvedor Backend Pleno Python e Java 1' }),
+  ).toBeVisible();
+  await expect(page.getByText('Desenvolvedor Backend Pleno Java Puro 6')).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+
+  await page.goto('/vagas?list=selection');
+  await expect(page.locator('.job-card')).toHaveCount(5);
+  await expect(page.getByText('Desenvolvedor Backend Pleno Java Puro 6')).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+
+  await page.goto('/vagas?list=secondary');
+  await expect(
+    page.getByRole('link', { name: 'Desenvolvedor Backend Pleno Python Legado' }),
+  ).toBeVisible();
+  const partialCard = page
+    .locator('.job-card')
+    .filter({ has: page.getByRole('link', { name: 'Desenvolvedor Backend Pleno Parcial' }) });
+  await expect(partialCard.getByText('Pendência: tecnologia não confirmada')).toBeVisible();
+  await expect(page.getByText('Desenvolvedor Backend Pleno Java Puro 6')).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+
+  await page.goto('/candidaturas');
+  await expect(page.getByRole('link', { name: 'Engenheiro Java Candidatado' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  await page.goto('/vagas?list=discarded');
+  await expect(page.getByRole('link', { name: 'Desenvolvedor Java Descartado' })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+
+  const origin = new URL(page.url()).origin;
+  expect(requests.every((url) => new URL(url).origin === origin)).toBe(true);
+});
+
+test('US3: persistência dos critérios, recuperação de interrupção e integridade do histórico após reinício isolado', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const { home, dbPath, url, start, stop } = await prepareIsolatedBackend();
+  const requests: string[] = [];
+  page.on('request', (req) => requests.push(req.url()));
+
+  try {
+    await start();
+    await signIn(page, url);
+
+    seedOpportunities(
+      [
+        {
+          id: 'restart-applied-java',
+          title: 'Engenheiro Java Candidatado',
+          company: 'CI&T',
+          fit: 'strong',
+          decision: 'applied',
+          descriptionText: 'Requisitos: Java 17 e Spring Boot.',
+        },
+        {
+          id: 'restart-discarded-java',
+          title: 'Desenvolvedor Java Descartado',
+          company: 'PicPay',
+          fit: 'strong',
+          decision: 'discarded',
+          descriptionText: 'Requisitos: Java 17.',
+        },
+        {
+          id: 'restart-python-legacy',
+          title: 'Desenvolvedor Backend Pleno Python',
+          company: 'DB',
+          fit: 'medium',
+          descriptionText: 'Requisitos: Python 3 e FastAPI.',
+          compatibility: null,
+        },
+      ],
+      {
+        dbPath,
+        criteria: {
+          version: 1,
+          targetRoles: ['Desenvolvedor Backend Pleno'],
+          stackKeywords: ['Java', 'Spring Boot'],
+        },
+        refresh: { state: 'pending', assessedCount: 2, remainingCount: 1 },
+      },
+    );
+
+    await page.goto(`${url}/criterios`);
+    await page.getByLabel('Tecnologias (um por linha)').fill('Python\nFastAPI');
+    await page.getByRole('button', { name: 'Salvar critérios' }).click();
+    await expect(page.getByText('Critérios salvos.')).toBeVisible();
+    await page.getByRole('button', { name: 'Atualizar avaliação' }).click();
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: 'Compatibilidade atualizada para o critério v2.' }),
+    ).toBeVisible();
+
+    await stop();
+    simulateInterruptedRefresh(dbPath, 'restart-python-legacy');
+    await start();
+
+    requests.length = 0;
+    await signIn(page, url);
+
+    await page.goto(`${url}/criterios`);
+    await expect(page.getByLabel('Tecnologias (um por linha)')).toHaveValue('Python\nFastAPI');
+    await expect(page.getByText('Critério v2', { exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: 'A atualização anterior foi interrompida antes de concluir' }),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    await page.goto(`${url}/vagas?list=secondary`);
+    await expect(
+      page.getByText(/A atualização da compatibilidade falhou \(1 vaga\(s\) pendente\(s\)\)/i),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: 'Desenvolvedor Backend Pleno Python' }),
+    ).toHaveCount(0);
+
+    await page.goto(`${url}/criterios`);
+    await page.getByRole('button', { name: 'Atualizar avaliação' }).click();
+    await expect(
+      page
+        .getByRole('status')
+        .filter({ hasText: 'Compatibilidade atualizada para o critério v2.' }),
+    ).toBeVisible();
+
+    await page.goto(`${url}/vagas?list=secondary`);
+    await expect(
+      page.getByRole('link', { name: 'Desenvolvedor Backend Pleno Python' }),
+    ).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    await page.goto(`${url}/candidaturas`);
+    await expect(page.getByRole('link', { name: 'Engenheiro Java Candidatado' })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    await page.goto(`${url}/vagas?list=discarded`);
+    await expect(page.getByRole('link', { name: 'Desenvolvedor Java Descartado' })).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+
+    const origin = new URL(url).origin;
+    expect(requests.every((reqUrl) => new URL(reqUrl).origin === origin)).toBe(true);
+  } finally {
+    await stop();
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+async function prepareIsolatedBackend() {
+  const e2eDir = resolve(fileURLToPath(new URL('.', import.meta.url)));
+  const backendDir = resolve(e2eDir, '../../../backend');
+  const buildDir = resolve(backendDir, 'build');
+  const libsDir = join(buildDir, 'libs');
+  const jar =
+    existsSync(libsDir) &&
+    readdirSync(libsDir).find((f) => f.endsWith('.jar') && !f.includes('-plain'));
+  if (!jar) {
+    throw new Error('Jar do backend não encontrado em backend/build/libs.');
+  }
+  const home = join(
+    buildDir,
+    `curriculotron-e2e-restart-${process.pid}-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+  );
+  mkdirSync(home, { recursive: true });
+  const port = await new Promise<number>((resolvePort, rejectPort) => {
+    const srv = createServer();
+    srv.unref();
+    srv.on('error', rejectPort);
+    srv.listen(0, '127.0.0.1', () => {
+      const addr = srv.address();
+      if (!addr || typeof addr === 'string') {
+        srv.close(() => rejectPort(new Error('Falha ao reservar porta efêmera.')));
+        return;
+      }
+      srv.close(() => resolvePort(addr.port));
+    });
+  });
+
+  const url = `http://127.0.0.1:${port}`;
+  const dbPath = join(home, 'data', 'curriculotron.db');
+  const javaBin = process.env.JAVA_HOME
+    ? join(process.env.JAVA_HOME, 'bin', process.platform === 'win32' ? 'java.exe' : 'java')
+    : 'java';
+
+  let proc: ReturnType<typeof spawn> | null = null;
+
+  async function start() {
+    if (proc) {
+      throw new Error('Instância isolada já está em execução.');
+    }
+    const child = spawn(
+      javaBin,
+      [
+        '--enable-native-access=ALL-UNNAMED',
+        '-jar',
+        join(libsDir, jar as string),
+        '--curriculotron.scheduler.enabled=false',
+        '--curriculotron.resume-file=',
+      ],
+      {
+        cwd: backendDir,
+        stdio: 'ignore',
+        env: {
+          ...process.env,
+          CURRICULOTRON_HOME: home,
+          CURRICULOTRON_PORT: String(port),
+          CURRICULOTRON_BIND: '127.0.0.1',
+          CURRICULOTRON_TLS_ENABLED: 'false',
+        },
+      },
+    );
+    proc = child;
+    const deadline = Date.now() + 45_000;
+    while (Date.now() < deadline) {
+      if (child.exitCode !== null) {
+        throw new Error(`Instância isolada encerrou prematuramente com código ${child.exitCode}.`);
+      }
+      try {
+        const res = await fetch(`${url}/api/health`);
+        if (res.ok) return;
+      } catch {
+        // Aguardando porta subir.
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    throw new Error(`Timeout aguardando ${url}/api/health.`);
+  }
+
+  async function stop() {
+    const child = proc;
+    if (!child) return;
+    proc = null;
+    if (child.exitCode !== null) return;
+    await new Promise<void>((resolveExit) => {
+      const timer = setTimeout(() => {
+        child.kill('SIGKILL');
+      }, 8_000);
+      child.once('exit', () => {
+        clearTimeout(timer);
+        resolveExit();
+      });
+      child.kill();
+    });
+  }
+
+  return { home, dbPath, url, start, stop };
+}
