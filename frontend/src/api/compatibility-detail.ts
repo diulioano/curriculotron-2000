@@ -126,11 +126,13 @@ export function parseOpportunityDetail(raw: unknown): OpportunityDetailData {
   }
   return {
     ...summary,
-    compatibilityEvidence: obj.compatibilityEvidence.map(parseCompatibilityEvidenceItem),
+    compatibilityEvidence: obj.compatibilityEvidence.map((item) =>
+      parseCompatibilityEvidenceItem(item),
+    ),
     compatibilityCriteria: parseCompatibilityCriteria(obj.compatibilityCriteria),
     facts: asStringArray(obj.facts, 'facts'),
     inferred: asStringArray(obj.inferred, 'inferred'),
     missing: asStringArray(obj.missing, 'missing'),
-    sources: obj.sources.map(parseDetailSource),
+    sources: obj.sources.map((item, index) => parseDetailSource(item, index)),
   };
 }
