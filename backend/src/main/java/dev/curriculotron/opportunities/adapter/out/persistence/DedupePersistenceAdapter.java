@@ -42,24 +42,37 @@ class DedupePersistenceAdapter implements DedupeRepository {
   }
 
   @Override
-  public void attach(
+  public boolean attach(
       String id, String source, String externalId, String url, String excerpt, Instant at) {
+    boolean changed = false;
     if (!urlIdentities.existsById(url)) {
       urlIdentities.save(new UrlIdentityEntity(url, id));
+      changed = true;
     }
     if (externalId != null
         && !externalIdentities.existsById(new ExternalIdentityId(source, externalId))) {
       externalIdentities.save(new ExternalIdentityEntity(source, externalId, id));
+      changed = true;
     }
 
-    boolean sourceAlreadyStored =
-        sources.existsByCanonicalUrl(url)
-            || (externalId != null && sources.existsBySourceAndExternalId(source, externalId));
-    if (!sourceAlreadyStored) {
+    var existing =
+        sources
+            .findByCanonicalUrl(url)
+            .or(() ->
+                externalId == null
+                    ? Optional.empty()
+                    : sources.findBySourceAndExternalId(source, externalId));
+    if (existing.isPresent()) {
+      var stored = existing.get();
+      if (!"manual".equals(source)) stored.refresh(at.toString());
+      sources.saveAndFlush(stored);
+    } else {
       String instant = at.toString();
       sources.save(
           new OpportunitySourceEntity(Ids.newId(), id, source, externalId, url, instant, excerpt));
+      changed = true;
     }
+    return changed;
   }
 
   @Override

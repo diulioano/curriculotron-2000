@@ -1,65 +1,68 @@
 package dev.curriculotron.opportunities.adapter.in.web;
 
 import dev.curriculotron.audit.application.IntegrationStatusService;
+import dev.curriculotron.opportunities.application.CompatibilityStatusService;
 import dev.curriculotron.opportunities.application.OpportunityService;
-import dev.curriculotron.opportunities.application.port.out.OpportunitySourceRepository;
+import dev.curriculotron.opportunities.domain.CompatibilityAssessment.Axis;
 import dev.curriculotron.opportunities.domain.Opportunity;
-import dev.curriculotron.salary.application.SalaryEstimateService;
+import dev.curriculotron.opportunities.domain.VacancyEvidence;
 import dev.curriculotron.shared.AppClock;
 import dev.curriculotron.shared.web.ApiException;
-import dev.curriculotron.shared.web.ApiListResponse;
-import dev.curriculotron.sources.PublicationStore;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.NoSuchElementException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/opportunities")
 public class OpportunityController {
   private final OpportunityService jobs;
-  private final OpportunitySourceRepository sources;
   private final IntegrationStatusService status;
   private final AppClock clock;
   private final OpportunitySummaries summaries;
-  private final SalaryEstimateService salary;
-  private final PublicationStore publications;
+  private final CompatibilityStatusService compatibility;
 
   public OpportunityController(
       OpportunityService jobs,
-      OpportunitySourceRepository sources,
       IntegrationStatusService status,
       AppClock clock,
       OpportunitySummaries summaries,
-      SalaryEstimateService salary,
-      PublicationStore publications) {
+      CompatibilityStatusService compatibility) {
     this.jobs = jobs;
     this.summaries = summaries;
-    this.sources = sources;
     this.status = status;
     this.clock = clock;
-    this.salary = salary;
-    this.publications = publications;
+    this.compatibility = compatibility;
   }
 
   @GetMapping
-  public ApiListResponse<OpportunitySummary> list(
+  @Transactional(readOnly = true)
+  public OpportunityListResponse list(
       @RequestParam(defaultValue = "selection") String list,
       @RequestParam(required = false) LocalDate date) {
+    var items = listByName(list, date == null ? clock.localDate() : date);
+    return new OpportunityListResponse(
+        summaries.of(items),
+        status.latestSuccess().map(java.time.Instant::toString).orElse(null),
+        compatibility.current());
+  }
+
+  private java.util.List<Opportunity> listByName(String list, LocalDate date) {
     try {
-      return new ApiListResponse<>(
-          summaries.of(jobs.list(list, date == null ? clock.localDate() : date)),
-          status.latestSuccess().map(java.time.Instant::toString).orElse(null));
+      return jobs.list(list, date);
     } catch (IllegalArgumentException e) {
       throw ApiException.badRequest("invalid_list", "Lista inválida.");
     }
   }
 
   @GetMapping("/{id}")
+  @Transactional(readOnly = true)
   public OpportunityDetailResponse detail(@PathVariable String id) {
     try {
       var job = jobs.get(id);
-      var summary = summaries.of(job);
+      var projection = summaries.detailOf(job);
+      var summary = projection.summary();
       var missing = new ArrayList<String>();
       if (job.salary() == null) missing.add("Salário a confirmar");
       if (job.workMode().equals("unknown")) missing.add("Modalidade a confirmar");
@@ -67,6 +70,7 @@ public class OpportunityController {
       if (job.location() == null || job.location().isBlank())
         missing.add("Localização a confirmar");
       if (job.companyName().equals("Empresa a confirmar")) missing.add("Empresa a confirmar");
+      addCompatibilityMissing(missing, summary.compatibility(), projection.storedEvidence());
       return new OpportunityDetailResponse(
           summary.id(),
           summary.title(),
@@ -84,12 +88,41 @@ public class OpportunityController {
           summary.companyTier(),
           summary.salaryReference(),
           summary.glassdoorUrl(),
+          summary.compatibility(),
+          projection.compatibilityEvidence(),
+          projection.compatibilityCriteria(),
           job.facts(),
           job.inferred(),
           missing,
-          sources.forOpportunity(id));
+          projection.sources());
     } catch (NoSuchElementException e) {
       throw ApiException.notFound("Vaga não encontrada.");
+    }
+  }
+
+  private static void addCompatibilityMissing(
+      ArrayList<String> missing,
+      CompatibilitySummary compatibility,
+      java.util.List<VacancyEvidence> storedEvidence) {
+    boolean hasText =
+        storedEvidence.stream().anyMatch(ev -> ev.text() != null && !ev.text().isBlank());
+    boolean hasComplete =
+        storedEvidence.stream()
+            .anyMatch(ev -> ev.completeness() == VacancyEvidence.Completeness.complete);
+    if (!hasText) {
+      missing.add("Descrição completa da vaga a confirmar");
+    } else if (!hasComplete) {
+      missing.add("Descrição completa da vaga a confirmar (conteúdo parcial ou resumido)");
+    }
+    if (compatibility.reasonCodes().contains("not_assessed")) {
+      missing.add("Avaliação de compatibilidade ainda não executada");
+      return;
+    }
+    if (compatibility.roleStatus() == Axis.unknown) {
+      missing.add("Cargo compatível não confirmado na vaga");
+    }
+    if (compatibility.technologyStatus() == Axis.unknown) {
+      missing.add("Tecnologias exigidas não confirmadas na vaga");
     }
   }
 

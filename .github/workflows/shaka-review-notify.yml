@@ -1,11 +1,12 @@
 name: Notify Shaka about new pull requests
 
 on:
-  pull_request_target:
-    types: [opened, reopened]
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 permissions:
   issues: write
+  pull-requests: write
 
 jobs:
   notify-shaka:
@@ -16,8 +17,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_ACTION: ${{ github.event.action }}
         run: |
-          payload="$(jq -nc --arg body '@openbotgit Shaka, novo PR aberto: rode a rotina de code review e publique o resultado neste PR.' '{body: $body}')"
+          if [ "${EVENT_ACTION}" = "synchronize" ]; then
+            message='@openbotgit Shaka, novos commits foram enviados a este PR: revise as mudanças recentes e publique o resultado neste PR.'
+          else
+            message='@openbotgit Shaka, novo PR aberto: rode a rotina de code review e publique o resultado neste PR.'
+          fi
+          payload="$(jq -nc --arg body "${message}" '{body: $body}')"
           curl --fail-with-body --silent --show-error \
             --request POST \
             --url "https://api.github.com/repos/${GH_REPO}/issues/${PR_NUMBER}/comments" \

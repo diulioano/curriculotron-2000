@@ -7,4 +7,6 @@ interface CompanySourceJpaRepository extends JpaRepository<CompanySourceEntity, 
   List<CompanySourceEntity> findByTier(String tier);
 
   List<CompanySourceEntity> findByCareersAdapterIsNotNullOrderByNameAsc();
+
+  List<CompanySourceEntity> findByNameIgnoreCase(String name);
 }

@@ -1,0 +1,439 @@
+[
+  {
+    "id": "java-backend",
+    "title": "Desenvolvedor Backend Pleno Java",
+    "text": "Requisitos: experiência com Java 17 e Spring Boot.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "matched"
+  },
+  {
+    "id": "spring-backend",
+    "title": "Desenvolvedor Back-end",
+    "text": "Requisitos: Spring Boot. Responsabilidades: desenvolver serviços backend.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "matched"
+  },
+  {
+    "id": "fullstack",
+    "title": "Desenvolvedor Fullstack Java",
+    "text": "Requisitos: Java e React.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "matched"
+  },
+  {
+    "id": "upper-java",
+    "title": "Developer Backend",
+    "text": "Requirements: JAVA and REST services.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "matched"
+  },
+  {
+    "id": "optional-java",
+    "title": "Backend Developer",
+    "text": "Preferred: Java for backend development.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "matched"
+  },
+  {
+    "id": "python",
+    "title": "Backend Developer Python",
+    "text": "Requirements: Python and Django.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "javascript",
+    "title": "Desenvolvedor Backend JavaScript",
+    "text": "Requisitos: JavaScript e Node.js.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "salesforce",
+    "title": "Desenvolvedor Salesforce Marketing Cloud",
+    "text": "Responsabilidades: configurar campanhas. Requisitos: Salesforce Marketing Cloud.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "mismatched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "designer",
+    "title": "Service Designer",
+    "text": "Requirements: service design. Our other team uses Java.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "mismatched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "product",
+    "title": "Data Product Manager",
+    "text": "Responsabilidades: gestão de produto e roadmap.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "mismatched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "solar",
+    "title": "Gerente de Relacionamento Canal Solar",
+    "text": "Responsabilidades: vendas, prospecção e relacionamento comercial.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "mismatched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "vehicles",
+    "title": "Gerente de Relacionamento de Veículos",
+    "text": "Responsabilidades: vendas e relacionamento comercial.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "mismatched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "people-manager",
+    "title": "Pessoa Coordenadora de Engenharia GenIA",
+    "text": "Responsabilidades: gestão de pessoas, orçamento e contratação. Outra equipe utiliza Java.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "mismatched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "ai-lead",
+    "title": "AI Lead Software Engineer",
+    "text": "Responsibilities: manage engineering staff and budgets. Requirements: Python.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "mismatched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "negative",
+    "title": "Backend Developer",
+    "text": "Não utilizamos Java. Requisitos: Python.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "not-needed",
+    "title": "Desenvolvedor Backend",
+    "text": "Java não é necessário. Requisitos: Python.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "other-team",
+    "title": "Desenvolvedor Backend",
+    "text": "Nossa outra equipe utiliza Java. Nesta função trabalhamos com Python.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "contradiction",
+    "title": "Backend Developer",
+    "text": "Requirements: Java. We do not use Java in this role.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "unknown"
+  },
+  {
+    "id": "java21",
+    "title": "Backend Developer Java",
+    "text": "Requirements: Java 21.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "matched"
+  },
+  {
+    "id": "junior",
+    "title": "Desenvolvedor Backend Java Júnior",
+    "text": "Requisitos: Java e Spring Boot.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "matched"
+  },
+  {
+    "id": "partial",
+    "title": "Backend Developer",
+    "text": "Resumo: desenvolvimento de serviços.",
+    "completeness": "partial",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "unknown"
+  },
+  {
+    "id": "legacy",
+    "title": "Backend Developer",
+    "text": "Menciona Java",
+    "completeness": "unknown",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Java",
+      "Spring Boot"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "unknown"
+  },
+  {
+    "id": "python-profile",
+    "title": "Backend Developer Python",
+    "text": "Requirements: Python and Django.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "Python"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "matched"
+  },
+  {
+    "id": "cpp",
+    "title": "Backend Developer C++",
+    "text": "Requirements: C++.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "C"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "csharp",
+    "title": "Backend Developer C#",
+    "text": "Requirements: C#.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "C"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "mismatched"
+  },
+  {
+    "id": "c",
+    "title": "Backend Developer C",
+    "text": "Requirements: C.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [
+      "C"
+    ],
+    "expectedRole": "matched",
+    "expectedTechnology": "matched"
+  },
+  {
+    "id": "empty-stack",
+    "title": "Backend Developer",
+    "text": "Requirements: Python.",
+    "completeness": "complete",
+    "roles": [
+      "Desenvolvedor Backend Pleno",
+      "Desenvolvedor Fullstack Pleno"
+    ],
+    "technologies": [],
+    "expectedRole": "matched",
+    "expectedTechnology": "unrestricted"
+  },
+  {
+    "id": "empty-role",
+    "title": "Backend Developer Java",
+    "text": "Requirements: Java.",
+    "completeness": "complete",
+    "roles": [],
+    "technologies": [
+      "Java"
+    ],
+    "expectedRole": "unknown",
+    "expectedTechnology": "matched"
+  }
+]

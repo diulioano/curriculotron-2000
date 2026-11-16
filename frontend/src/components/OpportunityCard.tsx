@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { describeCompatibility } from '../api/compatibility';
 import { post, type Opportunity } from '../api/panel';
 import { companyColor, companyInitials, salaryText } from '../lib/opportunity';
 import { formatAsOf, ZONE } from '../lib/time';
@@ -83,6 +84,7 @@ export function OpportunityCard({
   ]
     .filter(Boolean)
     .join(' · ');
+  const compatibility = item.compatibility ? describeCompatibility(item.compatibility) : null;
   const style = {
     '--c': color,
     flex: layout?.flex,
@@ -105,6 +107,11 @@ export function OpportunityCard({
       >
         <Link to={`/vagas/${item.id}`}>{item.title}</Link>
       </Heading>
+      {compatibility && (
+        <p className={`job-compatibility mono compatibility-${compatibility.tone}`}>
+          {compatibility.label}
+        </p>
+      )}
       <p className="job-place">
         {place || 'Local a confirmar'}
         {item.contractType !== 'unknown' && ` · ${item.contractType.toUpperCase()}`}
@@ -124,7 +131,9 @@ export function OpportunityCard({
           Ver no Glassdoor ↗
         </a>
       )}
-      {item.fitReasons.length > 0 && <p className="job-reason">“{item.fitReasons[0]}”</p>}
+      {item.fitReasons.length > 0 && Boolean(item.compatibility?.current) && (
+        <p className="job-reason">“{item.fitReasons[0]}”</p>
+      )}
       {item.deadlineAt && (
         <p className="job-deadline hl">
           <span aria-hidden="true">⏰ </span>

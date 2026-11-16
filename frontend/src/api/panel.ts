@@ -1,5 +1,29 @@
 import { api } from './client';
+import {
+  parseHomeData,
+  parseOpportunityListResponse,
+  type CompatibilitySummary,
+  type OpportunityListResponse,
+  type OpportunitySummary,
+  type RefreshStatus,
+} from './compatibility';
+import {
+  parseOpportunityDetail,
+  type CompatibilityCriteriaSnapshot,
+  type CompatibilityEvidenceItem,
+  type OpportunityDetailData,
+} from './compatibility-detail';
 import type { IntegrationState } from '../components/StatusBadge';
+
+export type {
+  CompatibilityCriteriaSnapshot,
+  CompatibilityEvidenceItem,
+  CompatibilitySummary,
+  OpportunityDetailData,
+  OpportunityListResponse,
+  OpportunitySummary,
+  RefreshStatus,
+};
 
 export interface ListResult<T> {
   items: T[];
@@ -32,6 +56,7 @@ export interface Opportunity {
   source?: OpportunitySource | null;
   /** Nível da empresa, quando o serviço informar. */
   companyTier?: 'priority' | 'suggested' | null;
+  compatibility?: CompatibilitySummary;
 }
 export interface SalaryObservation {
   id: string;
@@ -65,6 +90,8 @@ export interface OpportunitySource {
   fetchedAt: string;
 }
 export interface OpportunityDetail extends Opportunity {
+  compatibilityEvidence?: CompatibilityEvidenceItem[];
+  compatibilityCriteria?: CompatibilityCriteriaSnapshot | null;
   facts: string[];
   inferred: string[];
   missing: string[];
@@ -106,8 +133,15 @@ export interface ApplicationDetail extends Application {
 }
 export interface HomeData {
   dataAsOf: string | null;
+  assessment: RefreshStatus;
   integrations: Integration[];
-  selectionToday: { localDate: string; count: number; limit: number; items: Opportunity[] };
+  selectionToday: {
+    localDate: string;
+    count: number;
+    consumedCount: number;
+    limit: number;
+    items: OpportunitySummary[];
+  };
   applicationsWithNextActions: Application[];
   mailNeedingAttention: { id: string; subject: string }[];
   reviewQueueCount: number;
@@ -133,11 +167,16 @@ export interface TaskRun {
   errorSummary: string | null;
 }
 export const panel = {
-  home: (signal?: AbortSignal) => api<HomeData>('/api/home', { signal }),
-  opportunities: (list: string, signal?: AbortSignal) =>
-    api<ListResult<Opportunity>>(`/api/opportunities?list=${encodeURIComponent(list)}`, { signal }),
-  opportunity: (id: string, signal?: AbortSignal) =>
-    api<OpportunityDetail>(`/api/opportunities/${encodeURIComponent(id)}`, { signal }),
+  home: async (signal?: AbortSignal): Promise<HomeData> =>
+    parseHomeData(await api<unknown>('/api/home', { signal })),
+  opportunities: async (list: string, signal?: AbortSignal): Promise<OpportunityListResponse> =>
+    parseOpportunityListResponse(
+      await api<unknown>(`/api/opportunities?list=${encodeURIComponent(list)}`, { signal }),
+    ),
+  opportunity: async (id: string, signal?: AbortSignal): Promise<OpportunityDetailData> =>
+    parseOpportunityDetail(
+      await api<unknown>(`/api/opportunities/${encodeURIComponent(id)}`, { signal }),
+    ),
   applications: (signal?: AbortSignal) =>
     api<ListResult<Application>>('/api/applications', { signal }),
   application: (id: string, signal?: AbortSignal) =>

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import dev.curriculotron.opportunities.domain.VacancyEvidence.Completeness;
 import org.junit.jupiter.api.Test;
 
 class CareersSourcesTest {
@@ -37,6 +38,8 @@ class CareersSourcesTest {
         .isEqualTo(
             "https://epdm.fa.la1.oraclecloud.com/hcmUI/CandidateExperience/pt-BR/sites/CX_3001/job/11967");
     assertThat(item.location()).isEqualTo("SAO PAULO · Remoto");
+    assertThat(item.completeness()).isEqualTo(Completeness.partial);
+    assertThat(item.completenessReason()).isEqualTo("listing_summary");
     assertThatThrownBy(() -> new OracleRecruitingSource("evil.com/x", http))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -53,6 +56,7 @@ class CareersSourcesTest {
     var item = source.fetch().items().getFirst();
     assertThat(item.url()).isEqualTo("https://empresa.gupy.io/jobs/42");
     assertThat(item.location()).isEqualTo("Porto Alegre - RS · hybrid");
+    assertThat(item.completeness()).isEqualTo(Completeness.partial);
     when(http.get(any())).thenReturn("<html>sem dados</html>");
     assertThat(source.fetch().failures()).hasSize(1);
     assertThatThrownBy(() -> new GupySource("../x", http))
@@ -71,6 +75,7 @@ class CareersSourcesTest {
     assertThat(item.externalId()).isEqualTo("268");
     assertThat(item.title()).isEqualTo("Desenvolvedor(a) Java");
     assertThat(item.location()).isEqualTo("Remoto · São Leopoldo - RS");
+    assertThat(item.completeness()).isEqualTo(Completeness.partial);
     when(http.get(CwiCareersSource.ENDPOINT)).thenReturn("<html></html>");
     assertThat(new CwiCareersSource(http).fetch().failures()).hasSize(1);
   }

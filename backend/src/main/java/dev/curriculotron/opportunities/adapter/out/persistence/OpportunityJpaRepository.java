@@ -12,7 +12,7 @@ interface OpportunityJpaRepository extends JpaRepository<OpportunityEntity, Stri
   List<OpportunityEntity> findByMergedIntoIsNullAndUserDecisionOrderByUpdatedAtDescIdAsc(
       String userDecision);
 
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       "update OpportunityEntity o set o.userDecision = :decision, o.updatedAt = :at, "
           + "o.decisionRevertedAt = case when :decision = 'none' then :at else o.decisionRevertedAt end "

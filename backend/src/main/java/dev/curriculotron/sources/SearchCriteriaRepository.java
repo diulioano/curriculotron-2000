@@ -10,7 +10,16 @@ public interface SearchCriteriaRepository {
       RuleBasedRanker.Criteria criteria,
       BigDecimal cltMinimum,
       BigDecimal pjMinimum,
-      LocalTime dailySearchTime) {}
+      LocalTime dailySearchTime,
+      long version) {
+    public Settings(
+        RuleBasedRanker.Criteria criteria,
+        BigDecimal cltMinimum,
+        BigDecimal pjMinimum,
+        LocalTime dailySearchTime) {
+      this(criteria, cltMinimum, pjMinimum, dailySearchTime, 1);
+    }
+  }
 
   Settings current();
 }

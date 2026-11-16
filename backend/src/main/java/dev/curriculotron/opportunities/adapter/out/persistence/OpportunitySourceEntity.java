@@ -59,6 +59,15 @@ class OpportunitySourceEntity {
     return source;
   }
 
+  void refresh(String at) {
+    fetchedAt = at;
+    updatedAt = at;
+  }
+
+  String id() {
+    return id;
+  }
+
   String canonicalUrl() {
     return canonicalUrl;
   }

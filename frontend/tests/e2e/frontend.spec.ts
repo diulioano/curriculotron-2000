@@ -1,4 +1,4 @@
-﻿import { expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { mockCompanyColors } from './support/company-colors.js';
 
@@ -13,6 +13,20 @@ const job = {
   fitReasons: ['Java e Spring no seu perfil'],
   userDecision: 'none',
   availability: 'unconfirmed',
+  compatibility: {
+    criteriaVersion: 1,
+    evaluatorVersion: 1,
+    assessedAt: '2026-11-14T10:00:00Z',
+    current: true,
+    roleStatus: 'matched',
+    technologyStatus: 'matched',
+    reasonCodes: ['role_matched', 'technology_matched'],
+  },
+  compatibilityEvidence: [],
+  compatibilityCriteria: {
+    targetRoles: ['Desenvolvedor Java'],
+    stackKeywords: ['Java', 'Spring Boot'],
+  },
   facts: ['Java obrigatório'],
   inferred: ['Angular pode ser desejável'],
   missing: ['Salário'],
@@ -23,6 +37,16 @@ const job = {
       fetchedAt: '2026-11-14T10:00:00Z',
     },
   ],
+};
+const assessment = {
+  criteriaVersion: 1,
+  state: 'ready',
+  stale: false,
+  assessedCount: 1,
+  remainingCount: 0,
+  startedAt: null,
+  finishedAt: '2026-11-14T10:00:00Z',
+  errorCode: null,
 };
 const application = {
   id: 'app-1',
@@ -46,7 +70,8 @@ const application = {
 };
 const home = {
   dataAsOf: '2026-11-14T10:00:00Z',
-  selectionToday: { localDate: '2026-11-14', count: 1, limit: 10, items: [job] },
+  assessment,
+  selectionToday: { localDate: '2026-11-14', count: 1, consumedCount: 1, limit: 10, items: [job] },
   integrations: [
     {
       id: 'openbot',
@@ -62,6 +87,7 @@ const home = {
   missedRoutines: [],
 };
 const list = (items: unknown[]) => ({ items, dataAsOf: null });
+const opportunitiesList = (items: unknown[]) => ({ items, dataAsOf: null, assessment });
 
 test('cores: marcas e alternativas nos destaques dos cards', async ({ page }) => {
   const state = await mockCompanyColors(page);
@@ -263,7 +289,7 @@ test.beforeEach(async ({ page }) => {
       data = { authenticated: true, setupRequired: false, csrfToken: 'test-csrf' };
     else if (route.request().method() !== 'GET') data = {};
     else if (path === '/api/home') data = home;
-    else if (path === '/api/opportunities') data = list([job]);
+    else if (path === '/api/opportunities') data = opportunitiesList([job]);
     else if (path === '/api/opportunities/job-1') data = job;
     else if (path === '/api/applications') data = list([application]);
     else if (path === '/api/applications/app-1') data = application;
@@ -314,6 +340,16 @@ test.beforeEach(async ({ page }) => {
         deadlineHighlightDays: 7,
         urgentHours: 48,
         emailDigestEnabled: false,
+        assessment: {
+          criteriaVersion: 1,
+          state: 'ready',
+          stale: false,
+          assessedCount: 1,
+          remainingCount: 0,
+          startedAt: null,
+          finishedAt: '2026-11-14T10:00:00Z',
+          errorCode: null,
+        },
       };
     else if (path === '/api/data-inventory')
       data = { items: [{ category: 'Perfil', count: 1, retention: 'Até exclusão pelo usuário' }] };

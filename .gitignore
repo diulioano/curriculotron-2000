@@ -23,12 +23,16 @@ Desktop.ini
 # Backend (Gradle)
 backend/build/
 backend/.gradle/
+*.class
+*.jar
+!backend/gradle/wrapper/gradle-wrapper.jar
 
 # Frontend (Vite/Playwright)
 frontend/node_modules/
 frontend/dist/
 frontend/playwright-report/
 frontend/test-results/
+coverage/
 
 # Dados locais e certificados — nunca versionar
 *.db

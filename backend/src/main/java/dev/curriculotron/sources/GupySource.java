@@ -1,6 +1,7 @@
 package dev.curriculotron.sources;
 
 import dev.curriculotron.opportunities.domain.CanonicalUrl;
+import dev.curriculotron.opportunities.domain.VacancyEvidence.Completeness;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +62,9 @@ public class GupySource implements JobSource {
                 title + "\n" + row.path("department").asText(""),
                 title,
                 location.isEmpty() ? null : String.join(" · ", location),
-                PublicationDates.parse(row.path("publishedDate").asText(""))));
+                PublicationDates.parse(row.path("publishedDate").asText("")),
+                Completeness.partial,
+                "listing_summary"));
       }
       return new SourceResult(
           items,
