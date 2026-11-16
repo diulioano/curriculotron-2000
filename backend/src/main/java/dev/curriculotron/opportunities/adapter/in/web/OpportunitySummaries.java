@@ -3,11 +3,14 @@ package dev.curriculotron.opportunities.adapter.in.web;
 import dev.curriculotron.opportunities.application.port.out.CompatibilityRepository;
 import dev.curriculotron.opportunities.application.port.out.EvidenceRepository;
 import dev.curriculotron.opportunities.application.port.out.OpportunitySourceRepository;
+import dev.curriculotron.opportunities.domain.CompatibilityAssessment;
 import dev.curriculotron.opportunities.domain.Opportunity;
+import dev.curriculotron.opportunities.domain.VacancyEvidence;
 import dev.curriculotron.salary.application.SalaryEstimateService;
 import dev.curriculotron.sources.PublicationStore;
 import dev.curriculotron.sources.SearchCriteriaRepository;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +39,13 @@ public class OpportunitySummaries {
     this.criteria = criteria;
   }
 
+  public record DetailProjection(
+      OpportunitySummary summary,
+      List<OpportunityDetailResponse.CompatibilityEvidenceView> compatibilityEvidence,
+      OpportunityDetailResponse.CompatibilityCriteriaView compatibilityCriteria,
+      List<VacancyEvidence> storedEvidence,
+      List<OpportunitySourceRepository.Source> sources) {}
+
   @Transactional(readOnly = true)
   public List<OpportunitySummary> of(List<Opportunity> items) {
     long criteriaVersion = criteria.current().version();
@@ -47,9 +57,54 @@ public class OpportunitySummaries {
     return of(item, criteria.current().version());
   }
 
+  @Transactional(readOnly = true)
+  public DetailProjection detailOf(Opportunity item) {
+    long criteriaVersion = criteria.current().version();
+    Optional<CompatibilityAssessment> assessment = assessments.find(item.id());
+    List<OpportunitySourceRepository.Source> found = sources.forOpportunity(item.id());
+    CompatibilitySummary compatibility = compatibility(item.id(), criteriaVersion, assessment);
+    OpportunitySummary summary = summaryFor(item, found, compatibility);
+    List<OpportunityDetailResponse.CompatibilityEvidenceView> evidenceViews =
+        assessment
+            .map(a ->
+                a.evidenceItems().stream()
+                    .map(ev ->
+                        new OpportunityDetailResponse.CompatibilityEvidenceView(
+                            ev.source(),
+                            ev.sourceUrl(),
+                            ev.fetchedAt() == null ? null : ev.fetchedAt().toString(),
+                            ev.field(),
+                            ev.section(),
+                            ev.quote(),
+                            ev.matchedCriterion(),
+                            ev.observedTerm(),
+                            ev.mentionKind(),
+                            ev.observedVersion(),
+                            ev.configuredVersion()))
+                    .toList())
+            .orElseGet(List::of);
+    OpportunityDetailResponse.CompatibilityCriteriaView criteriaView =
+        assessment
+            .map(a ->
+                new OpportunityDetailResponse.CompatibilityCriteriaView(
+                    a.criteriaSnapshot().criteria().roles().stream().sorted().toList(),
+                    a.criteriaSnapshot().criteria().stack().stream().sorted().toList()))
+            .orElse(null);
+    return new DetailProjection(
+        summary, evidenceViews, criteriaView, evidence.forOpportunity(item.id()), found);
+  }
+
   private OpportunitySummary of(Opportunity item, long criteriaVersion) {
     List<OpportunitySourceRepository.Source> found = sources.forOpportunity(item.id());
-    CompatibilitySummary compatibility = compatibility(item.id(), criteriaVersion);
+    CompatibilitySummary compatibility =
+        compatibility(item.id(), criteriaVersion, assessments.find(item.id()));
+    return summaryFor(item, found, compatibility);
+  }
+
+  private OpportunitySummary summaryFor(
+      Opportunity item,
+      List<OpportunitySourceRepository.Source> found,
+      CompatibilitySummary compatibility) {
     List<String> fitReasons = compatibility.current() ? item.fitReasons() : List.of();
     return new OpportunitySummary(
         item.id(),
@@ -71,18 +126,18 @@ public class OpportunitySummaries {
         compatibility);
   }
 
-  private CompatibilitySummary compatibility(String opportunityId, long criteriaVersion) {
-    return assessments
-        .find(opportunityId)
-        .map(assessment ->
+  private CompatibilitySummary compatibility(
+      String opportunityId, long criteriaVersion, Optional<CompatibilityAssessment> assessment) {
+    return assessment
+        .map(found ->
             new CompatibilitySummary(
-                assessment.criteriaVersion(),
-                assessment.evaluatorVersion(),
-                assessment.assessedAt().toString(),
-                assessment.current(criteriaVersion, evidence.revision(opportunityId)),
-                assessment.roleStatus(),
-                assessment.technologyStatus(),
-                assessment.reasonCodes()))
+                found.criteriaVersion(),
+                found.evaluatorVersion(),
+                found.assessedAt().toString(),
+                found.current(criteriaVersion, evidence.revision(opportunityId)),
+                found.roleStatus(),
+                found.technologyStatus(),
+                found.reasonCodes()))
         .orElseGet(CompatibilitySummary::notAssessed);
   }
 }
