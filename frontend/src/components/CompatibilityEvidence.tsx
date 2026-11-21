@@ -8,6 +8,8 @@ import type {
 import type { OpportunityDetail } from '../api/panel';
 import { formatAsOf } from '../lib/time';
 
+const USER_CORRECTION_SOURCE = 'user_correction';
+
 const safeUrl = (url: string | null): url is string => Boolean(url && /^https?:\/\//i.test(url));
 
 const ROLE_LABELS = {
@@ -56,6 +58,7 @@ function EvidenceEntry({ entry }: { entry: CompatibilityEvidenceItem }) {
   const mention = MENTION_LABELS[entry.mentionKind];
   const hasVersionInfo = entry.observedVersion !== null || entry.configuredVersion !== null;
   const versionDiffers = hasVersionInfo && entry.observedVersion !== entry.configuredVersion;
+  const isUserCorrection = entry.source === USER_CORRECTION_SOURCE;
 
   return (
     <li className="compat-evidence-item">
@@ -94,7 +97,9 @@ function EvidenceEntry({ entry }: { entry: CompatibilityEvidenceItem }) {
       <blockquote className="compat-quote">“{entry.quote}”</blockquote>
 
       <p className="compat-origin mono small muted">
-        {safeUrl(entry.sourceUrl) ? (
+        {isUserCorrection ? (
+          <span>fonte: título corrigido por você</span>
+        ) : safeUrl(entry.sourceUrl) ? (
           <a href={entry.sourceUrl} target="_blank" rel="noopener noreferrer">
             fonte: {entry.source} ↗
           </a>
@@ -103,7 +108,7 @@ function EvidenceEntry({ entry }: { entry: CompatibilityEvidenceItem }) {
         )}
         {entry.fetchedAt && (
           <>
-            {' · consultado '}
+            {isUserCorrection ? ' · corrigido em ' : ' · consultado '}
             <time dateTime={entry.fetchedAt}>{formatAsOf(entry.fetchedAt)}</time>
           </>
         )}
