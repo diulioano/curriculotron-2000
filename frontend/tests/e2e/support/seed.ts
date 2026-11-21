@@ -99,6 +99,12 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
     db.exec(
       "CREATE TRIGGER status_change_no_delete BEFORE DELETE ON status_change BEGIN SELECT RAISE(ABORT, 'status_change is append-only'); END",
     );
+    // opportunity_correction (V14) também é append-only e referencia opportunity(id).
+    db.exec('DROP TRIGGER IF EXISTS opportunity_correction_no_delete');
+    db.exec('DELETE FROM opportunity_correction');
+    db.exec(
+      "CREATE TRIGGER opportunity_correction_no_delete BEFORE DELETE ON opportunity_correction BEGIN SELECT RAISE(ABORT, 'opportunity_correction e append-only'); END",
+    );
     db.exec('DELETE FROM application');
     db.exec('DELETE FROM evidence');
     db.exec('DELETE FROM review_item');
