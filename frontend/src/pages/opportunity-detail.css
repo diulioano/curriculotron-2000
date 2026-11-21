@@ -364,3 +364,58 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.job-timeline-section,
+.prepare-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.job-timeline-section h2 {
+  font-size: 26px;
+}
+.prepare-section h2 {
+  font-family: var(--font-hand);
+  font-size: 18px;
+  font-weight: 700;
+}
+.job-timeline {
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-left: 2px solid var(--ink);
+}
+.job-timeline li {
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+.job-timeline-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.job-timeline-text {
+  font-size: 17px;
+  color: var(--ink);
+}
+.job-timeline-note {
+  color: var(--ink-muted);
+}
+.ep-corrected-field,
+.ep-corrected-by,
+.ep-source-original {
+  display: block;
+}
+.ep-corrected-by,
+.ep-source-original {
+  font: 0.875rem/1.4 var(--font-mono);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
