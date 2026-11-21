@@ -475,7 +475,9 @@ export function parseHomeData(raw: unknown): HomeData {
         scheduledFor: asString(r.scheduledFor, 'missedRoutine.scheduledFor'),
       };
     }),
-    pendingReviewItems: obj.pendingReviewItems.map(parsePendingReviewItem),
+    pendingReviewItems: obj.pendingReviewItems.map((item, index) =>
+      parsePendingReviewItem(item, index),
+    ),
   };
 }
 

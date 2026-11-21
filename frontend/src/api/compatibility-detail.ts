@@ -213,7 +213,7 @@ export function parseOpportunityDetail(raw: unknown): OpportunityDetailData {
     missing: asStringArray(obj.missing, 'missing'),
     sources: obj.sources.map((item, index) => parseDetailSource(item, index)),
     seniority: parseSeniority(obj.seniority),
-    corrections: obj.corrections.map(parseCorrectionEntry),
-    timeline: obj.timeline.map(parseTimelineEvent),
+    corrections: obj.corrections.map((entry, index) => parseCorrectionEntry(entry, index)),
+    timeline: obj.timeline.map((event, index) => parseTimelineEvent(event, index)),
   };
 }
