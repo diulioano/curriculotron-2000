@@ -30,6 +30,9 @@ export function colorJob(companyName: string, id = 'color-0') {
     inferred: [],
     missing: ['Salário'],
     sources: [],
+    seniority: { label: null, status: 'absent' as const, reason: null },
+    corrections: [],
+    timeline: [],
   };
 }
 
@@ -92,6 +95,7 @@ export async function mockCompanyColors(page: Page, state = colorState()) {
         mailNeedingAttention: [],
         reviewQueueCount: 0,
         missedRoutines: [],
+        pendingReviewItems: [],
       };
     } else if (path === '/api/settings/search-routine') {
       data = { enabled: false };
