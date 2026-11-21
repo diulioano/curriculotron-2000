@@ -1,9 +1,10 @@
-﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { api } from '../api/client';
 import { post, type ListResult, type ReviewItem } from '../api/panel';
 import { Empty, MutationFeedback, PageHeader, QueryState } from '../components/Panel';
+import { SurfaceStateBlock } from '../components/SurfaceState';
 
 const KINDS: Record<string, string> = {
   ambiguous_mail: 'Mensagem ambígua',
@@ -12,6 +13,7 @@ const KINDS: Record<string, string> = {
   bot_config: 'Configuração de bot',
   salary_ambiguous: 'Salário a confirmar',
 };
+
 function ReviewCard({ item }: { item: ReviewItem }) {
   const client = useQueryClient();
   const [resolution, setResolution] = useState('');
@@ -30,40 +32,54 @@ function ReviewCard({ item }: { item: ReviewItem }) {
     save.mutate();
   }
   return (
-    <article className="note-card dsh stack">
-      <p className="eyebrow">{KINDS[item.kind] ?? item.kind}</p>
-      <h2>{item.summary}</h2>
-      {item.kind === 'dedupe_candidate' ? (
-        <Link to="/revisao/duplicatas">Comparar anúncios →</Link>
-      ) : item.kind === 'bot_config' ? (
-        <Link to="/bots">Revisar configuração nos bots →</Link>
-      ) : (
-        <form className="stack" onSubmit={submit}>
-          <div className="field">
-            <label htmlFor={`resolution-${item.id}`}>Sua decisão</label>
-            <textarea
-              id={`resolution-${item.id}`}
-              className="input"
-              required
-              value={resolution}
-              onChange={(e) => setResolution(e.target.value)}
-            />
+    <article className="stack">
+      <SurfaceStateBlock
+        kind="pending_review"
+        subLabel={KINDS[item.kind] ?? item.kind}
+        title={item.summary}
+        titleAs="h2"
+      >
+        {item.kind === 'dedupe_candidate' ? (
+          <div className="surface-actions">
+            <Link className="btn bt bt-sec dsh" to="/revisao/duplicatas">
+              Comparar anúncios →
+            </Link>
           </div>
-          <div>
-            <button
-              type="submit"
-              className="btn bt-pri"
-              disabled={save.isPending || !resolution.trim()}
-            >
-              Registrar resolução
-            </button>
+        ) : item.kind === 'bot_config' ? (
+          <div className="surface-actions">
+            <Link className="btn bt bt-sec dsh" to="/bots">
+              Revisar configuração nos bots →
+            </Link>
           </div>
-          <MutationFeedback error={save.error} />
-        </form>
-      )}
+        ) : (
+          <form className="stack" onSubmit={submit} style={{ marginTop: 8 }}>
+            <div className="field">
+              <label htmlFor={`resolution-${item.id}`}>Sua decisão</label>
+              <textarea
+                id={`resolution-${item.id}`}
+                className="input"
+                required
+                value={resolution}
+                onChange={(e) => setResolution(e.target.value)}
+              />
+            </div>
+            <div>
+              <button
+                type="submit"
+                className="btn bt bt-pri"
+                disabled={save.isPending || !resolution.trim()}
+              >
+                Registrar resolução
+              </button>
+            </div>
+            <MutationFeedback error={save.error} />
+          </form>
+        )}
+      </SurfaceStateBlock>
     </article>
   );
 }
+
 export function ReviewQueue() {
   const query = useQuery({
     queryKey: ['reviews'],
@@ -72,7 +88,7 @@ export function ReviewQueue() {
   return (
     <div className="stack">
       <PageHeader title="Fila de revisão" eyebrow="Aqui, a decisão é sua">
-        <Link className="btn bt-sec dsh" to="/revisao/duplicatas">
+        <Link className="btn bt bt-sec dsh" to="/revisao/duplicatas">
           Comparar duplicatas ↗
         </Link>
       </PageHeader>
