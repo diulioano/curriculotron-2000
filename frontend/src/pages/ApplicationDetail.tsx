@@ -1,4 +1,4 @@
-﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router';
 import {
@@ -10,6 +10,11 @@ import {
 import { APPLICATION_STATUSES } from '../lib/labels';
 import { Deadline } from '../components/Deadline';
 import { MutationFeedback, PageHeader, QueryState } from '../components/Panel';
+import { Select, type SelectOption } from '../components/Select';
+
+const STATUS_OPTIONS = (Object.entries(APPLICATION_STATUSES) as [ApplicationStatus, string][]).map(
+  ([value, label]): SelectOption<ApplicationStatus> => ({ value, label }),
+);
 
 function ApplicationForms({ item }: { item: Detail }) {
   const client = useQueryClient();
@@ -56,18 +61,7 @@ function ApplicationForms({ item }: { item: Detail }) {
           <h2>Atualizar etapa</h2>
           <div className="field">
             <label htmlFor="status">Etapa</label>
-            <select
-              className="input"
-              id="status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value as ApplicationStatus)}
-            >
-              {Object.entries(APPLICATION_STATUSES).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <Select id="status" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
           </div>
           <div className="field">
             <label htmlFor="reason">Motivo ou correção</label>
@@ -82,7 +76,7 @@ function ApplicationForms({ item }: { item: Detail }) {
           <div>
             <button
               type="submit"
-              className="btn bt-pri"
+              className="btn bt bt-pri"
               disabled={save.isPending || !reason.trim()}
             >
               Salvar etapa
@@ -112,7 +106,11 @@ function ApplicationForms({ item }: { item: Detail }) {
             />
           </div>
           <div>
-            <button type="submit" className="btn bt-pri" disabled={save.isPending || !text.trim()}>
+            <button
+              type="submit"
+              className="btn bt bt-pri"
+              disabled={save.isPending || !text.trim()}
+            >
               Salvar próximo passo
             </button>
           </div>
@@ -139,7 +137,7 @@ export function ApplicationDetail() {
       {item && (
         <>
           <PageHeader title={item.title} eyebrow={item.companyName}>
-            <Link className="btn bt-sec dsh" to={`/vagas/${item.opportunityId}`}>
+            <Link className="btn bt bt-sec dsh" to={`/vagas/${item.opportunityId}`}>
               Ver vaga ↗
             </Link>
           </PageHeader>
