@@ -37,6 +37,16 @@ describe('profileMatchFor', () => {
     expect(profileMatchFor('Experiência com Go e Kafka', criteria(['Go']))).toBe('matched');
   });
 
+  it.each([
+    ['Python', 'Python 3.12', 'matched'],
+    ['Java', 'Java 17+', 'matched'],
+    ['Java', 'Java 17 LTS', 'missing_from_profile'],
+    ['Java', 'Java 17.', 'missing_from_profile'],
+    ['Java', 'Java 17++', 'missing_from_profile'],
+  ])('trata o sufixo de versão de "%s" com critério "%s" como %s', (text, keyword, expected) => {
+    expect(profileMatchFor(text, criteria([keyword]))).toBe(expected);
+  });
+
   it('não casa palavra curta dentro de outra palavra', () => {
     expect(profileMatchFor('Google Cloud', criteria(['Go']))).toBe('missing_from_profile');
     expect(profileMatchFor('Trabalho com algoritmos e cargos', criteria(['Go']))).toBeNull();
