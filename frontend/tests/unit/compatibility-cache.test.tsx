@@ -95,6 +95,7 @@ function makeHome(overrides: Record<string, unknown> = {}) {
     mailNeedingAttention: [],
     reviewQueueCount: 0,
     missedRoutines: [],
+    pendingReviewItems: [],
     ...overrides,
   };
 }
@@ -110,6 +111,9 @@ function makeDetail(id: string, overrides: Record<string, unknown> = {}) {
     facts: ['Java 21'],
     inferred: [],
     missing: [],
+    seniority: { label: null, status: 'absent', reason: null },
+    corrections: [],
+    timeline: [],
     sources: [
       { source: 'greenhouse', url: 'https://example.com/vaga', fetchedAt: '2026-11-16T09:00:00Z' },
     ],

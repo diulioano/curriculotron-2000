@@ -5,7 +5,11 @@ import type {
   Integration,
   Opportunity,
   OpportunitySource,
+  PendingReviewItem,
+  ListResult,
+  PendingReviewKind,
   SalaryObservation,
+  TaskRun,
 } from './panel';
 
 export const REFRESH_STATES = ['pending', 'running', 'ready', 'failed'] as const;
@@ -33,6 +37,20 @@ const APPLICATION_STATUSES = [
   'withdrawn',
 ] as const;
 const DUE_PRECISIONS = ['exact', 'date_only', 'ambiguous'] as const;
+export const CORRECTABLE_OPPORTUNITY_FIELDS = [
+  'title',
+  'company_name',
+  'location',
+  'work_mode',
+  'contract_type',
+  'salary_min',
+  'salary_max',
+  'salary_unit',
+  'availability',
+  'deadline_at',
+  'published_at',
+] as const;
+export type CorrectableOpportunityField = (typeof CORRECTABLE_OPPORTUNITY_FIELDS)[number];
 
 export interface RefreshStatus {
   criteriaVersion: number;
@@ -280,6 +298,16 @@ export function parseOpportunitySummary(raw: unknown): OpportunitySummary {
   const obj = asRecord(raw, 'OpportunitySummary');
   return {
     id: asString(obj.id, 'id'),
+    correctedFields:
+      obj.correctedFields === undefined
+        ? []
+        : (() => {
+            if (!Array.isArray(obj.correctedFields))
+              throw new Error('Campo correctedFields inválido.');
+            return obj.correctedFields.map((field, index) =>
+              asEnum(field, CORRECTABLE_OPPORTUNITY_FIELDS, `correctedFields[${index}]`),
+            );
+          })(),
     title: asString(obj.title, 'title'),
     companyName: asString(obj.companyName, 'companyName'),
     location: asNullableString(obj.location, 'location') ?? '',
@@ -338,6 +366,69 @@ function parseApplication(raw: unknown): Application {
   };
 }
 
+const PENDING_REVIEW_KINDS: readonly PendingReviewKind[] = [
+  'dedupe_candidate',
+  'review_item',
+  'email_attention',
+  'missed_routine',
+] as const;
+
+function parsePendingReviewItem(raw: unknown, index: number): PendingReviewItem {
+  const obj = asRecord(raw, `pendingReviewItems[${index}]`);
+  return {
+    id: asString(obj.id, `pendingReviewItems[${index}].id`),
+    kind: asEnum(obj.kind, PENDING_REVIEW_KINDS, `pendingReviewItems[${index}].kind`),
+    kindLabel: asString(obj.kindLabel, `pendingReviewItems[${index}].kindLabel`),
+    title: asString(obj.title, `pendingReviewItems[${index}].title`),
+    summary: asString(obj.summary, `pendingReviewItems[${index}].summary`),
+    targetRoute: asInternalRoute(obj.targetRoute, `pendingReviewItems[${index}].targetRoute`),
+  };
+}
+
+function asInternalRoute(raw: unknown, field: string): string {
+  const route = asString(raw, field);
+  if (!route.startsWith('/') || route.startsWith('//') || route.includes('\\')) {
+    throw new Error(`Rota interna ${field} inválida.`);
+  }
+  return route;
+}
+
+const TASK_RUN_STATES = ['queued', 'running', 'completed', 'failed', 'paused'] as const;
+
+function asOptionalStringArray(raw: unknown, field: string): string[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  return asStringArray(raw, field);
+}
+
+export function parseTaskRun(raw: unknown): TaskRun {
+  const obj = asRecord(raw, 'TaskRun');
+  return {
+    id: asString(obj.id, 'taskRun.id'),
+    kind: asOptionalString(obj.kind, 'taskRun.kind'),
+    state: asEnum(obj.state, TASK_RUN_STATES, 'taskRun.state'),
+    pauseReason: asOptionalNullableString(obj.pauseReason, 'taskRun.pauseReason') ?? null,
+    sourcesConsulted: asOptionalStringArray(obj.sourcesConsulted, 'taskRun.sourcesConsulted'),
+    sourcesFailed: asOptionalStringArray(obj.sourcesFailed, 'taskRun.sourcesFailed'),
+    errorSummary: asOptionalNullableString(obj.errorSummary, 'taskRun.errorSummary') ?? null,
+    startedAt: asOptionalNullableString(obj.startedAt, 'taskRun.startedAt'),
+    finishedAt: asOptionalNullableString(obj.finishedAt, 'taskRun.finishedAt'),
+    createdAt: asOptionalString(obj.createdAt, 'taskRun.createdAt'),
+  };
+}
+
+export function parseTaskRunList(raw: unknown): ListResult<TaskRun> {
+  const obj = asRecord(raw, 'TaskRunList');
+  if (!Array.isArray(obj.items)) throw new Error('Campo items inválido.');
+  return {
+    items: obj.items.map(parseTaskRun),
+    dataAsOf: asOptionalNullableString(obj.dataAsOf, 'dataAsOf') ?? null,
+  };
+}
+
+export async function fetchTaskRuns(signal?: AbortSignal): Promise<ListResult<TaskRun>> {
+  return parseTaskRunList(await api<unknown>('/api/task-runs', { signal }));
+}
+
 export function parseHomeData(raw: unknown): HomeData {
   const obj = asRecord(raw, 'HomeData');
   if (!('dataAsOf' in obj)) throw new Error('Campo dataAsOf ausente.');
@@ -352,6 +443,10 @@ export function parseHomeData(raw: unknown): HomeData {
 
   const sel = asRecord(obj.selectionToday, 'selectionToday');
   if (!Array.isArray(sel.items)) throw new Error('Campo selectionToday.items inválido.');
+
+  if (!Array.isArray(obj.pendingReviewItems)) {
+    throw new Error('Campo pendingReviewItems inválido.');
+  }
 
   return {
     dataAsOf: asNullableString(obj.dataAsOf, 'dataAsOf'),
@@ -380,6 +475,7 @@ export function parseHomeData(raw: unknown): HomeData {
         scheduledFor: asString(r.scheduledFor, 'missedRoutine.scheduledFor'),
       };
     }),
+    pendingReviewItems: obj.pendingReviewItems.map(parsePendingReviewItem),
   };
 }
 

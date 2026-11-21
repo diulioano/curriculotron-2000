@@ -60,6 +60,9 @@ function validDetailPayload(overrides: Record<string, unknown> = {}) {
     facts: ['Java 17 obrigatório'],
     inferred: [],
     missing: ['Salário a confirmar'],
+    seniority: { label: null, status: 'absent', reason: null },
+    corrections: [],
+    timeline: [],
     sources: [
       {
         source: 'lever:ciandt',

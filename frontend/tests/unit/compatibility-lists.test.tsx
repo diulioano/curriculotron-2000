@@ -126,6 +126,7 @@ describe('parsing estrito de compatibilidade a partir de unknown', () => {
         mailNeedingAttention: [],
         reviewQueueCount: 0,
         missedRoutines: [],
+        pendingReviewItems: [],
       }),
     ).toThrow();
   });
@@ -304,6 +305,7 @@ describe('páginas Hoje e Vagas com stale, consumo histórico e falha de parser'
           mailNeedingAttention: [],
           reviewQueueCount: 0,
           missedRoutines: [],
+          pendingReviewItems: [],
         });
       }),
     );
@@ -342,6 +344,7 @@ describe('páginas Hoje e Vagas com stale, consumo histórico e falha de parser'
           mailNeedingAttention: [],
           reviewQueueCount: 0,
           missedRoutines: [],
+          pendingReviewItems: [],
         });
       }),
     );
@@ -429,6 +432,7 @@ describe('páginas Hoje e Vagas com stale, consumo histórico e falha de parser'
             mailNeedingAttention: [],
             reviewQueueCount: 0,
             missedRoutines: [],
+            pendingReviewItems: [],
           });
         }
         return json(200, {
