@@ -11,6 +11,7 @@ import dev.curriculotron.opportunities.application.CompatibilityRefreshService;
 import dev.curriculotron.opportunities.application.ReassessOpportunitiesService;
 import dev.curriculotron.opportunities.application.port.out.CompatibilityRepository;
 import dev.curriculotron.opportunities.application.port.out.EvidenceRepository;
+import dev.curriculotron.opportunities.application.port.out.OpportunityCorrectionRepository;
 import dev.curriculotron.opportunities.application.port.out.OpportunityRepository;
 import dev.curriculotron.opportunities.application.port.out.SelectionRepository;
 import dev.curriculotron.opportunities.domain.CompatibilityAssessment;
@@ -45,6 +46,7 @@ class ReassessOpportunitiesServiceTest extends AppTestBase {
   @Autowired AssessOpportunityService assessor;
   @Autowired OpportunityRepository jobs;
   @Autowired EvidenceRepository evidence;
+  @Autowired OpportunityCorrectionRepository corrections;
   @Autowired SelectionRepository selections;
   @Autowired SearchCriteriaRepository criteriaRepo;
   @Autowired ConfiguredSourceRepository boards;
@@ -252,7 +254,7 @@ class ReassessOpportunitiesServiceTest extends AppTestBase {
 
     AtomicInteger snapshotReads = new AtomicInteger();
     AssessmentInputService mutatingInputs =
-        new AssessmentInputService(jobs, evidence, criteriaRepo, boards) {
+        new AssessmentInputService(jobs, evidence, corrections, criteriaRepo, boards) {
           @Override
           public Optional<Input> snapshot(String id) {
             Optional<Input> snap = super.snapshot(id);
@@ -304,7 +306,7 @@ class ReassessOpportunitiesServiceTest extends AppTestBase {
 
     AtomicInteger snapshotReads = new AtomicInteger();
     AssessmentInputService alwaysMutatingInputs =
-        new AssessmentInputService(jobs, evidence, criteriaRepo, boards) {
+        new AssessmentInputService(jobs, evidence, corrections, criteriaRepo, boards) {
           @Override
           public Optional<Input> snapshot(String id) {
             Optional<Input> snap = super.snapshot(id);
@@ -346,7 +348,7 @@ class ReassessOpportunitiesServiceTest extends AppTestBase {
 
     AtomicInteger reads = new AtomicInteger();
     AssessmentInputService criteriaChangingInputs =
-        new AssessmentInputService(jobs, evidence, criteriaRepo, boards) {
+        new AssessmentInputService(jobs, evidence, corrections, criteriaRepo, boards) {
           @Override
           public Optional<Input> snapshot(String id) {
             Optional<Input> snap = super.snapshot(id);
@@ -393,7 +395,7 @@ class ReassessOpportunitiesServiceTest extends AppTestBase {
     insertOpportunityWithEvidence("Backend Pleno Java", "Java 17.", Completeness.complete);
 
     AssessmentInputService interruptingInputs =
-        new AssessmentInputService(jobs, evidence, criteriaRepo, boards) {
+        new AssessmentInputService(jobs, evidence, corrections, criteriaRepo, boards) {
           @Override
           public Optional<Input> snapshot(String id) {
             Thread.currentThread().interrupt();

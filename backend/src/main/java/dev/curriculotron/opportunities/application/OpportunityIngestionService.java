@@ -1,9 +1,11 @@
 package dev.curriculotron.opportunities.application;
 
 import dev.curriculotron.opportunities.application.port.out.EvidenceRepository;
+import dev.curriculotron.opportunities.application.port.out.OpportunityCorrectionRepository;
 import dev.curriculotron.opportunities.application.port.out.OpportunityRepository;
 import dev.curriculotron.opportunities.application.port.out.OpportunityRepository.SourcedOpportunity;
 import dev.curriculotron.opportunities.domain.CanonicalUrl;
+import dev.curriculotron.opportunities.domain.CorrectableOpportunityField;
 import dev.curriculotron.opportunities.domain.JobFactExtractor;
 import dev.curriculotron.opportunities.domain.VacancyEvidence;
 import dev.curriculotron.shared.AppClock;
@@ -27,6 +29,7 @@ public final class OpportunityIngestionService {
   private static final Logger log = LoggerFactory.getLogger(OpportunityIngestionService.class);
 
   private final OpportunityRepository jobs;
+  private final OpportunityCorrectionRepository corrections;
   private final DedupeService dedupe;
   private final EvidenceRepository evidence;
   private final AssessOpportunityService assessor;
@@ -37,6 +40,7 @@ public final class OpportunityIngestionService {
 
   public OpportunityIngestionService(
       OpportunityRepository jobs,
+      OpportunityCorrectionRepository corrections,
       DedupeService dedupe,
       EvidenceRepository evidence,
       AssessOpportunityService assessor,
@@ -44,6 +48,7 @@ public final class OpportunityIngestionService {
       WriteExecutor writer,
       AppClock clock) {
     this.jobs = jobs;
+    this.corrections = corrections;
     this.dedupe = dedupe;
     this.evidence = evidence;
     this.assessor = assessor;
@@ -74,15 +79,7 @@ public final class OpportunityIngestionService {
           if (ingested.sourceConflict()) return ingested;
           String stored = ingested.opportunityId();
           boolean hasDetails = item.title() != null || item.text() != null;
-          if (hasDetails && !manual)
-            jobs.refreshDetails(
-                stored,
-                facts.title(),
-                company,
-                facts.location(),
-                facts.workMode(),
-                JobFactExtractor.factList(facts),
-                at);
+          if (hasDetails && !manual) refreshKeepingCorrections(stored, facts, company, at);
           String sourceId = manual ? null : sourceIdOf(item);
           if (hasDetails || evidence.forOpportunity(stored).isEmpty())
             evidence.upsert(
@@ -106,6 +103,29 @@ public final class OpportunityIngestionService {
           "Avaliação não publicada após conflitos de versão opportunityId={}",
           result.opportunityId());
     return result;
+  }
+
+  /**
+   * Atualiza a vaga com os dados da coleta, mas mantém por campo o valor que a pessoa corrigiu; a
+   * fonte e a evidência continuam registrando o dado bruto coletado.
+   */
+  private void refreshKeepingCorrections(
+      String id, JobFactExtractor.Facts facts, String company, String at) {
+    var corrected = corrections.correctedFields(id);
+    String title = facts.title();
+    String companyName = company;
+    String location = facts.location();
+    String workMode = facts.workMode();
+    if (!corrected.isEmpty()) {
+      var current = jobs.find(id).orElseThrow();
+      if (corrected.contains(CorrectableOpportunityField.title)) title = current.title();
+      if (corrected.contains(CorrectableOpportunityField.company_name))
+        companyName = current.companyName();
+      if (corrected.contains(CorrectableOpportunityField.location)) location = current.location();
+      if (corrected.contains(CorrectableOpportunityField.work_mode)) workMode = current.workMode();
+    }
+    jobs.refreshDetails(
+        id, title, companyName, location, workMode, JobFactExtractor.factList(facts), at);
   }
 
   private DedupeService.IngestResult store(
