@@ -17,7 +17,8 @@ test('J3: confirmação manual, histórico, próxima ação e prazo no início',
   await expect(page.getByRole('button', { name: 'Candidatura já registrada' })).toBeDisabled();
   await page.goto('/candidaturas');
   await page.getByRole('link', { name: 'Java Backend' }).click();
-  await page.getByLabel('Etapa', { exact: true }).selectOption('interview');
+  await page.getByLabel('Etapa', { exact: true }).click();
+  await page.getByRole('option', { name: 'Entrevista' }).click();
   await page.getByLabel('Motivo ou correção').fill('Convite recebido por telefone');
   await page.getByRole('button', { name: 'Salvar etapa' }).click();
   await expect(page.locator('.timeline li')).toHaveCount(2);

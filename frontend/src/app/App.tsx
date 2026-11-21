@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router';
 import { fetchSession, onUnauthorized } from '../api/client';
 import { RoughFilter } from '../components/Logo';
+import { SurfaceStateBlock } from '../components/SurfaceState';
 import { Home } from '../pages/Home';
 import { Opportunities } from '../pages/Opportunities';
 import { OpportunityDetail } from '../pages/OpportunityDetail';
@@ -40,26 +41,20 @@ function SessionGate() {
 
   if (session.isPending) {
     return (
-      <p className="mono muted" style={{ padding: 32 }} role="status">
-        Carregando…
-      </p>
+      <main style={{ padding: '48px 16px', maxWidth: 560, margin: '0 auto' }}>
+        <SurfaceStateBlock kind="loading" title="Verificando sessão local…" />
+      </main>
     );
   }
   if (session.isError) {
     return (
       <main style={{ padding: '48px 16px', maxWidth: 560, margin: '0 auto' }}>
-        <div className="alert dsh" role="alert">
-          O serviço local do Curriculotron não respondeu. Verifique se ele está rodando neste
-          computador e se você está na Wi-Fi de casa.
-        </div>
-        <button
-          className="btn bt bt-sec dsh"
-          type="button"
-          onClick={() => void session.refetch()}
-          style={{ marginTop: 16 }}
-        >
-          Tentar de novo
-        </button>
+        <SurfaceStateBlock
+          kind="error"
+          title="Serviço local indisponível"
+          body="O serviço local do Curriculotron não respondeu. Verifique se ele está rodando neste computador e se você está na Wi-Fi de casa."
+          action={{ label: 'Tentar de novo', onClick: () => void session.refetch() }}
+        />
       </main>
     );
   }

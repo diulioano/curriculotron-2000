@@ -1,5 +1,6 @@
 package dev.curriculotron.opportunities.adapter.out.persistence;
 
+import dev.curriculotron.opportunities.application.port.out.OpportunityCorrectionRepository;
 import dev.curriculotron.opportunities.application.port.out.OpportunityRepository;
 import dev.curriculotron.opportunities.domain.Opportunity;
 import dev.curriculotron.shared.persistence.StringListJsonConverter;
@@ -199,6 +200,39 @@ class OpportunityEntity {
       evidenceRevision++;
       updatedAt = at;
     }
+  }
+
+  OpportunityCorrectionRepository.CorrectableState correctableState(
+      String publishedAt, String deadlineAt) {
+    return new OpportunityCorrectionRepository.CorrectableState(
+        title,
+        companyName,
+        location,
+        workMode,
+        contractType,
+        salaryMin,
+        salaryMax,
+        salaryUnit,
+        availability,
+        deadlineAt,
+        publishedAt,
+        mergedInto);
+  }
+
+  /**
+   * Aplica uma correção manual aos campos da vaga (as datas ficam a cargo de {@link
+   * OpportunityDatesEntity}) e devolve se a revisão da evidência foi invalidada, o que torna a
+   * avaliação de compatibilidade desatualizada.
+   */
+  boolean applyCorrection(OpportunityCorrectionRepository.CorrectedValues values, String at) {
+    long before = evidenceRevision;
+    refreshDetails(
+        values.title(), values.companyName(), values.location(), values.workMode(), facts, at);
+    updateCompensation(
+        values.contractType(), values.salaryMin(), values.salaryMax(), values.salaryUnit(), at);
+    updateAvailability(values.availability(), at);
+    updatedAt = at;
+    return evidenceRevision != before;
   }
 
   void invalidateEvidence() {

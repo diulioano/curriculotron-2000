@@ -570,4 +570,206 @@ class OpportunityApiTest extends AppTestBase {
             jdbc.sql("SELECT count(*) FROM opportunity_compatibility").query(Long.class).single())
         .isEqualTo(compatibilityBefore);
   }
+
+  private String ingestWith(String externalId, String title, String text) {
+    return ingestion.ingest(
+        new JobSource.Item(
+            "lever:ciandt",
+            externalId,
+            "https://jobs.lever.co/ciandt/" + externalId,
+            text,
+            title,
+            "Remoto",
+            clock.localDate(),
+            Completeness.complete,
+            null),
+        "CI&T");
+  }
+
+  @Test
+  void detailExposesSeniorityAsFactInferredOrAbsent() throws Exception {
+    TestSession.setup(mvc, TestSession.PASSWORD);
+    var s = TestSession.login(mvc, TestSession.PASSWORD);
+    String fact =
+        ingestWith("seniority-fact", "Desenvolvedor Backend Pleno", "Requisitos: Java e Spring.");
+    String inferred =
+        ingestWith(
+            "seniority-inferred",
+            "Desenvolvedor Backend Java",
+            "Requisitos: Java e Spring Boot. Exigimos 3+ anos de experiência.");
+    String absent =
+        ingestWith(
+            "seniority-absent", "Desenvolvedor Backend Java", "Requisitos: Java e Spring Boot.");
+
+    mvc.perform(get("/api/opportunities/" + fact).session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.seniority.status").value("fact"))
+        .andExpect(jsonPath("$.seniority.label").value("Pleno"))
+        .andExpect(jsonPath("$.seniority.reason").value(nullValue()));
+    mvc.perform(get("/api/opportunities/" + inferred).session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.seniority.status").value("inferred"))
+        .andExpect(jsonPath("$.seniority.label").value("Pleno"))
+        .andExpect(jsonPath("$.seniority.reason").value("inferido: “3+ anos”"));
+    mvc.perform(get("/api/opportunities/" + absent).session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.seniority.status").value("absent"))
+        .andExpect(jsonPath("$.seniority.label").value(nullValue()))
+        .andExpect(jsonPath("$.seniority.reason").value(nullValue()));
+  }
+
+  @Test
+  void externalVisitRecordsInformationalEventWithoutDecisionOrApplication() throws Exception {
+    TestSession.setup(mvc, TestSession.PASSWORD);
+    var s = TestSession.login(mvc, TestSession.PASSWORD);
+    String id = ingestWith("visit-1", "Desenvolvedor Backend Pleno", "Requisitos: Java.");
+    var before = jdbc.sql("SELECT * FROM opportunity WHERE id = ?").param(id).query().singleRow();
+    long opened = externalOpened(id);
+
+    mvc.perform(get("/api/opportunities/" + id).session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.timeline[?(@.kind=='external_opened')]").isEmpty());
+    mvc.perform(get("/api/opportunities/" + id).session(s.session())).andExpect(status().isOk());
+    assertThat(externalOpened(id)).isEqualTo(opened);
+
+    clock.setClock(Clock.fixed(Instant.parse("2026-11-14T16:00:00Z"), AppClock.ZONE));
+    mvc.perform(
+            post("/api/opportunities/" + id + "/external-visit")
+                .session(s.session())
+                .header("X-CSRF-Token", s.csrf()))
+        .andExpect(status().isNoContent())
+        .andExpect(content().string(""));
+
+    assertThat(externalOpened(id)).isEqualTo(opened + 1);
+    assertThat(
+            jdbc.sql(
+                    "SELECT author FROM activity_log WHERE action = 'opportunity.external_opened'"
+                        + " AND target_type = 'opportunity' AND target_id = ?")
+                .param(id)
+                .query(String.class)
+                .single())
+        .isEqualTo("user");
+    assertThat(jdbc.sql("SELECT * FROM opportunity WHERE id = ?").param(id).query().singleRow())
+        .isEqualTo(before);
+    assertThat(
+            jdbc.sql("SELECT user_decision FROM opportunity WHERE id = ?")
+                .param(id)
+                .query(String.class)
+                .single())
+        .isEqualTo("none");
+    assertThat(
+            jdbc.sql("SELECT count(*) FROM application WHERE opportunity_id = ?")
+                .param(id)
+                .query(Long.class)
+                .single())
+        .isZero();
+
+    mvc.perform(get("/api/opportunities/" + id).session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.userDecision").value("none"))
+        .andExpect(jsonPath("$.timeline[?(@.kind=='external_opened')].actorLabel").value("você"))
+        .andExpect(
+            jsonPath("$.timeline[?(@.kind=='external_opened')].description")
+                .value("Abriu o link da vaga."))
+        .andExpect(
+            jsonPath("$.timeline[?(@.kind=='external_opened')].note")
+                .value("isso não registra candidatura"))
+        .andExpect(
+            jsonPath("$.timeline[?(@.kind=='external_opened')].at").value("2026-11-14T16:00:00Z"))
+        .andExpect(jsonPath("$.timeline[?(@.kind=='applied')]").isEmpty());
+    assertThat(externalOpened(id)).isEqualTo(opened + 1);
+  }
+
+  @Test
+  void externalVisitRequiresSessionCsrfAndExistingOpportunity() throws Exception {
+    TestSession.setup(mvc, TestSession.PASSWORD);
+    var s = TestSession.login(mvc, TestSession.PASSWORD);
+    String id = ingestWith("visit-2", "Desenvolvedor Backend Pleno", "Requisitos: Java.");
+    String path = "/api/opportunities/" + id + "/external-visit";
+    long opened = externalOpened(id);
+
+    mvc.perform(post(path)).andExpect(status().isForbidden());
+    mvc.perform(post(path).session(s.session())).andExpect(status().isForbidden());
+    var anonymous = TestSession.anonymous(mvc);
+    mvc.perform(post(path).session(anonymous.session()).header("X-CSRF-Token", anonymous.csrf()))
+        .andExpect(status().isUnauthorized());
+    mvc.perform(get(path).session(s.session())).andExpect(status().is4xxClientError());
+    assertThat(externalOpened(id)).isEqualTo(opened);
+
+    long activityBefore = jdbc.sql("SELECT count(*) FROM activity_log").query(Long.class).single();
+    mvc.perform(
+            post("/api/opportunities/nao-existe/external-visit")
+                .session(s.session())
+                .header("X-CSRF-Token", s.csrf()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error.code").value("not_found"));
+    assertThat(jdbc.sql("SELECT count(*) FROM activity_log").query(Long.class).single())
+        .isEqualTo(activityBefore);
+  }
+
+  @Test
+  void timelineOrdersDiscoveryAndDecisionsChronologicallyAndMapsRestoreActionNone()
+      throws Exception {
+    TestSession.setup(mvc, TestSession.PASSWORD);
+    var s = TestSession.login(mvc, TestSession.PASSWORD);
+    clock.setClock(Clock.fixed(Instant.parse("2026-11-14T10:00:00Z"), AppClock.ZONE));
+    String id = ingestWith("timeline-basic", "Desenvolvedor Backend Pleno", "Requisitos: Java.");
+    for (var step :
+        List.of(
+            new String[] {"2026-11-14T11:00:00Z", "discard"},
+            new String[] {"2026-11-14T12:00:00Z", "restore"})) {
+      clock.setClock(Clock.fixed(Instant.parse(step[0]), AppClock.ZONE));
+      mvc.perform(
+              post("/api/opportunities/" + id + "/" + step[1])
+                  .session(s.session())
+                  .header("X-CSRF-Token", s.csrf()))
+          .andExpect(status().isOk());
+    }
+
+    mvc.perform(get("/api/opportunities/" + id).session(s.session()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.timeline[*].kind", contains("discovered", "discarded", "restored")))
+        .andExpect(
+            jsonPath(
+                "$.timeline[*].at",
+                contains("2026-11-14T10:00:00Z", "2026-11-14T11:00:00Z", "2026-11-14T12:00:00Z")))
+        .andExpect(jsonPath("$.timeline[0].actorLabel").value("bot Busca de vagas"))
+        .andExpect(jsonPath("$.timeline[0].description").value("Encontrada em lever:ciandt."))
+        .andExpect(jsonPath("$.timeline[0].note").value(nullValue()))
+        .andExpect(jsonPath("$.timeline[1].actorLabel").value("você"))
+        .andExpect(jsonPath("$.timeline[1].description").value("Descartou a vaga."))
+        .andExpect(jsonPath("$.timeline[2].actorLabel").value("você"))
+        .andExpect(jsonPath("$.timeline[2].description").value("Restaurou a vaga."))
+        .andExpect(jsonPath("$.timeline[2].note").value(nullValue()));
+  }
+
+  @Test
+  void manualEntryIsLabeledAsManualDiscovery() throws Exception {
+    TestSession.setup(mvc, TestSession.PASSWORD);
+    var s = TestSession.login(mvc, TestSession.PASSWORD);
+    var response =
+        mvc.perform(
+                post("/api/opportunities/manual")
+                    .session(s.session())
+                    .header("X-CSRF-Token", s.csrf())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"url\":\"https://example.com/jobs/timeline\",\"text\":\"Java\"}"))
+            .andExpect(status().isOk())
+            .andReturn();
+    String id = JsonPath.read(response.getResponse().getContentAsString(), "$.id");
+
+    mvc.perform(get("/api/opportunities/" + id).session(s.session()))
+        .andExpect(jsonPath("$.timeline[0].kind").value("discovered"))
+        .andExpect(jsonPath("$.timeline[0].actorLabel").value("entrada manual"))
+        .andExpect(jsonPath("$.timeline[0].description").value("Encontrada em manual."));
+  }
+
+  private long externalOpened(String id) {
+    return jdbc.sql(
+            "SELECT count(*) FROM activity_log WHERE action = 'opportunity.external_opened'"
+                + " AND target_id = ?")
+        .param(id)
+        .query(Long.class)
+        .single();
+  }
 }

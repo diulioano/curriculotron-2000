@@ -75,4 +75,8 @@ class OpportunitySourceEntity {
   String fetchedAt() {
     return fetchedAt;
   }
+
+  String createdAt() {
+    return createdAt;
+  }
 }

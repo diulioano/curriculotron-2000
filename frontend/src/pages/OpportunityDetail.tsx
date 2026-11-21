@@ -1,16 +1,33 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
-import { post, type OpportunityDetail as Detail, type TaskRun } from '../api/panel';
+import {
+  post,
+  recordExternalVisit,
+  type OpportunityDetail as Detail,
+  type OpportunityTimelineEvent,
+  type TaskRun,
+} from '../api/panel';
 import {
   useCompatibilityRefresh,
   useCoordinatedOpportunityDetailQuery,
 } from '../api/useCompatibilityRefresh';
 import { CompatibilityEvidence } from '../components/CompatibilityEvidence';
 import { Deadline } from '../components/Deadline';
+import {
+  AbsentValue,
+  CorrectedField,
+  EvidenceBlock,
+  FactItem,
+  InferenceBox,
+  type ProfileMatchState,
+} from '../components/Epistemic';
+import { OpportunityCorrectionForm } from '../components/OpportunityCorrectionForm';
 import { SalaryEstimate } from '../components/SalaryEstimate';
 import { MutationFeedback, QueryState } from '../components/Panel';
+import { SurfaceStateBlock } from '../components/SurfaceState';
 import { companyColor, companyInitials, salaryText } from '../lib/opportunity';
+import { profileMatchFor } from '../lib/profile-match';
 import { formatAsOf } from '../lib/time';
 import { api } from '../api/client';
 import './opportunity-detail.css';
@@ -19,11 +36,22 @@ const MODES = { remote: 'Remoto', hybrid: 'Híbrido', onsite: 'Presencial' };
 const TIERS = { priority: 'prioritária', suggested: 'sugerida' };
 const safeUrl = (url: string) => /^https?:\/\//i.test(url);
 
+function profileMatch(fact: string, item: Detail): ProfileMatchState {
+  return profileMatchFor(fact, item.compatibilityCriteria ?? null, item.compatibilityEvidence);
+}
+
+function sortTimeline(events: readonly OpportunityTimelineEvent[]): OpportunityTimelineEvent[] {
+  return [...events].sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+}
+
 export function OpportunityDetail() {
   const { id = '' } = useParams();
   const client = useQueryClient();
   const { invalidateAfterOpportunityChange } = useCompatibilityRefresh();
   const query = useCoordinatedOpportunityDetailQuery(id);
+  const [correcting, setCorrecting] = useState(false);
+  const [correctionSaved, setCorrectionSaved] = useState(false);
+
   const action = useMutation({
     mutationFn: (kind: string) => post(`/api/opportunities/${encodeURIComponent(id)}/${kind}`),
     onSuccess: () => {
@@ -57,6 +85,11 @@ export function OpportunityDetail() {
     },
   });
   const color = item ? companyColor(item.companyName) : undefined;
+  const missingProfileFacts = item
+    ? item.facts.filter((fact) => profileMatch(fact, item) === 'missing_from_profile')
+    : [];
+  const timelineEvents = item ? sortTimeline(item.timeline) : [];
+
   return (
     <div className="job-detail" style={{ '--c': color } as CSSProperties}>
       <Link to="/" className="back-link">
@@ -75,12 +108,24 @@ export function OpportunityDetail() {
             </div>
             <div className="job-detail-title">
               <p className="job-detail-company">
-                {item.companyName}
+                {item.companyName.trim() ? (
+                  <CorrectedField corrections={item.corrections} fields={['company_name']}>
+                    {item.companyName}
+                  </CorrectedField>
+                ) : (
+                  <CorrectedField corrections={item.corrections} fields={['company_name']}>
+                    <AbsentValue>Empresa não informada</AbsentValue>
+                  </CorrectedField>
+                )}
                 {item.companyTier && (
                   <span className="tier-tag mono">{TIERS[item.companyTier]}</span>
                 )}
               </p>
-              <h1>{item.title}</h1>
+              <h1>
+                <CorrectedField corrections={item.corrections} fields={['title']}>
+                  {item.title}
+                </CorrectedField>
+              </h1>
               <svg
                 className="squiggle"
                 width="360"
@@ -105,6 +150,12 @@ export function OpportunityDetail() {
                   {item.fitReasons.map((reason, i) => (
                     <p key={i}>{reason}</p>
                   ))}
+                  {missingProfileFacts.length > 0 && (
+                    <p className="muted small">
+                      Ponto de atenção: a vaga cita {missingProfileFacts[0]}, que não está no seu
+                      perfil.
+                    </p>
+                  )}
                 </section>
               )}
 
@@ -116,11 +167,13 @@ export function OpportunityDetail() {
                     {item.facts.length ? (
                       <ul>
                         {item.facts.map((fact, i) => (
-                          <li key={i}>✓ {fact}</li>
+                          <li key={i}>
+                            <FactItem value={fact} profileMatch={profileMatch(fact, item)} />
+                          </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="muted">Nenhum requisito declarado registrado.</p>
+                      <AbsentValue>Nenhum requisito declarado registrado.</AbsentValue>
                     )}
                   </section>
                   <section className="req-inferred dsh">
@@ -131,7 +184,7 @@ export function OpportunityDetail() {
                     </Link>
                     {!item.salary && (
                       <button
-                        className="btn bt bt-sec"
+                        className="btn bt bt-sec dsh"
                         disabled={refresh.isPending}
                         onClick={() => refresh.mutate()}
                       >
@@ -148,11 +201,13 @@ export function OpportunityDetail() {
                     {item.inferred.length ? (
                       <ul>
                         {item.inferred.map((text, i) => (
-                          <li key={i}>~ {text}</li>
+                          <li key={i}>
+                            <InferenceBox value={text} />
+                          </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="muted">Nenhuma inferência.</p>
+                      <AbsentValue>Nenhuma inferência.</AbsentValue>
                     )}
                     <p className="muted small">Inferências não contam como requisito oficial.</p>
                   </section>
@@ -164,13 +219,39 @@ export function OpportunityDetail() {
                   <h2 id="a-confirmar">A confirmar</h2>
                   <ul>
                     {item.missing.map((text, i) => (
-                      <li key={i} className="hatch absent">
-                        <span>{text}</span>
+                      <li key={i}>
+                        <AbsentValue>{text}</AbsentValue>
                       </li>
                     ))}
                   </ul>
                 </section>
               )}
+
+              <section className="job-timeline-section" aria-labelledby="linha-do-tempo">
+                <h2 id="linha-do-tempo">Linha do tempo</h2>
+                {timelineEvents.length > 0 ? (
+                  <ol className="job-timeline">
+                    {timelineEvents.map((event) => (
+                      <li key={event.id}>
+                        <span className="job-timeline-meta">
+                          <time dateTime={event.at}>{formatAsOf(event.at)}</time> ·{' '}
+                          {event.actorLabel}
+                        </span>
+                        <span className="job-timeline-text">
+                          {event.description}{' '}
+                          {event.note && <span className="job-timeline-note">({event.note})</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <SurfaceStateBlock
+                    kind="empty"
+                    title="Nenhum evento registrado ainda."
+                    body="A linha do tempo registra descoberta, correções e decisões explícitas nesta vaga."
+                  />
+                )}
+              </section>
             </div>
 
             <aside className="job-detail-aside">
@@ -202,6 +283,13 @@ export function OpportunityDetail() {
                     href={item.sources.find((s) => safeUrl(s.url))!.url}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => {
+                      void recordExternalVisit(item.id)
+                        .then(() => {
+                          void client.invalidateQueries({ queryKey: ['opportunity', id] });
+                        })
+                        .catch(() => undefined);
+                    }}
                   >
                     Abrir vaga no site ↗
                   </a>
@@ -223,28 +311,40 @@ export function OpportunityDetail() {
                 />
               </section>
 
-              <section className="evidence dsh-t mono" aria-labelledby="evidencia">
-                <h2 id="evidencia">Evidência</h2>
-                {item.sources.length ? (
-                  item.sources.map((source, index) => (
-                    <div key={index} className="evidence-item">
-                      {safeUrl(source.url) ? (
-                        <a href={source.url} target="_blank" rel="noopener noreferrer">
-                          fonte: {source.source} ↗
-                        </a>
-                      ) : (
-                        <span>fonte: {source.source} · link indisponível</span>
-                      )}
-                      <span>
-                        consultado:{' '}
-                        <time dateTime={source.fetchedAt}>{formatAsOf(source.fetchedAt)}</time>
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <span>Nenhuma fonte registrada.</span>
-                )}
-                <span className="muted">Abrir a fonte não registra candidatura.</span>
+              <EvidenceBlock
+                sources={item.sources}
+                publishedAt={item.publishedAt}
+                corrections={item.corrections}
+                correctOpen={correcting}
+                onCorrect={() => {
+                  setCorrectionSaved(false);
+                  setCorrecting((open) => !open);
+                }}
+              />
+
+              {correctionSaved && (
+                <p role="status">Correção registrada — fonte original preservada.</p>
+              )}
+
+              {correcting && (
+                <OpportunityCorrectionForm
+                  item={item}
+                  onClose={() => setCorrecting(false)}
+                  onCorrected={() => {
+                    setCorrectionSaved(true);
+                    setCorrecting(false);
+                  }}
+                />
+              )}
+
+              <section className="prepare-section" aria-labelledby="preparar">
+                <h2 id="preparar">Preparar</h2>
+                <SurfaceStateBlock
+                  kind="empty"
+                  title="Simulador de entrevista em construção"
+                  body="Esta área reunirá preparação orientada aos requisitos declarados e lacunas desta vaga."
+                  action={{ label: 'Ver critérios do perfil →', to: '/criterios' }}
+                />
               </section>
             </aside>
           </div>
@@ -256,64 +356,148 @@ export function OpportunityDetail() {
 
 function Summary({ item }: { item: Detail }) {
   const salary = salaryText(item);
+  const seniority = item.seniority;
   return (
     <section aria-label="Resumo" className="job-summary">
       <div>
         <span className="summary-label mono">LOCAL</span>
         {item.location ? (
-          <span className="summary-value">✓ {item.location}</span>
+          <CorrectedField corrections={item.corrections} fields={['location']}>
+            <FactItem
+              className="summary-value"
+              value={item.location}
+              sourceDeclared={!item.corrections.some((entry) => entry.fieldName === 'location')}
+            />
+          </CorrectedField>
         ) : (
-          <Absent>a confirmar</Absent>
+          <CorrectedField corrections={item.corrections} fields={['location']}>
+            <AbsentValue>a confirmar</AbsentValue>
+          </CorrectedField>
         )}
       </div>
       <div>
         <span className="summary-label mono">MODALIDADE</span>
         {item.workMode === 'unknown' ? (
-          <Absent>a confirmar</Absent>
+          <CorrectedField corrections={item.corrections} fields={['work_mode']}>
+            <AbsentValue>a confirmar</AbsentValue>
+          </CorrectedField>
         ) : (
-          <span className="summary-value">✓ {MODES[item.workMode]}</span>
+          <CorrectedField corrections={item.corrections} fields={['work_mode']}>
+            <FactItem
+              className="summary-value"
+              value={MODES[item.workMode]}
+              sourceDeclared={!item.corrections.some((entry) => entry.fieldName === 'work_mode')}
+            />
+          </CorrectedField>
         )}
       </div>
       <div>
         <span className="summary-label mono">CONTRATO</span>
         {item.contractType === 'unknown' ? (
-          <Absent>a confirmar</Absent>
+          <CorrectedField corrections={item.corrections} fields={['contract_type']}>
+            <AbsentValue>a confirmar</AbsentValue>
+          </CorrectedField>
         ) : (
-          <span className="summary-value">✓ {item.contractType.toUpperCase()}</span>
+          <CorrectedField corrections={item.corrections} fields={['contract_type']}>
+            <FactItem
+              className="summary-value"
+              value={item.contractType.toUpperCase()}
+              sourceDeclared={
+                !item.corrections.some((entry) => entry.fieldName === 'contract_type')
+              }
+            />
+          </CorrectedField>
         )}
       </div>
       <div>
         <span className="summary-label mono">SALÁRIO</span>
         {salary ? (
-          <span className="summary-value salary">✓ {salary}</span>
+          <CorrectedField
+            corrections={item.corrections}
+            fields={['salary_min', 'salary_max', 'salary_unit']}
+          >
+            <FactItem
+              bold
+              className="summary-value salary"
+              value={salary}
+              sourceDeclared={
+                !item.corrections.some((entry) =>
+                  ['salary_min', 'salary_max', 'salary_unit'].includes(entry.fieldName),
+                )
+              }
+            />
+          </CorrectedField>
         ) : (
-          <Absent className="salary">Salário a confirmar</Absent>
+          <CorrectedField
+            corrections={item.corrections}
+            fields={['salary_min', 'salary_max', 'salary_unit']}
+          >
+            <AbsentValue spanClassName="salary">Salário a confirmar</AbsentValue>
+          </CorrectedField>
+        )}
+      </div>
+      <div>
+        <span className="summary-label mono">NÍVEL</span>
+        {seniority.status === 'corrected_title' && seniority.label ? (
+          <InferenceBox
+            inline
+            className="summary-value"
+            value={seniority.label}
+            reason="derivado do título corrigido"
+          />
+        ) : seniority.status === 'fact' && seniority.label ? (
+          <FactItem className="summary-value" value={seniority.label} />
+        ) : seniority.status === 'inferred' && seniority.label ? (
+          <InferenceBox
+            inline
+            className="summary-value"
+            value={seniority.label}
+            reason={seniority.reason}
+          />
+        ) : (
+          <AbsentValue>a confirmar</AbsentValue>
         )}
       </div>
       <div>
         <span className="summary-label mono">DISPONIBILIDADE</span>
         {item.availability === 'unconfirmed' ? (
-          <Absent>a confirmar</Absent>
+          <CorrectedField corrections={item.corrections} fields={['availability']}>
+            <AbsentValue>a confirmar</AbsentValue>
+          </CorrectedField>
+        ) : item.availability === 'open' ? (
+          <CorrectedField corrections={item.corrections} fields={['availability']}>
+            <FactItem
+              className="summary-value"
+              value="aberta"
+              sourceDeclared={!item.corrections.some((entry) => entry.fieldName === 'availability')}
+            />
+          </CorrectedField>
         ) : (
-          <span className="summary-value">
-            {item.availability === 'open' ? '✓ aberta' : '✕ encerrada'}
-          </span>
+          <CorrectedField corrections={item.corrections} fields={['availability']}>
+            <span className="summary-value">✕ encerrada</span>
+          </CorrectedField>
         )}
       </div>
-      {item.deadlineAt && (
-        <div>
-          <span className="summary-label mono">PRAZO</span>
-          <Deadline at={item.deadlineAt} precision="date_only" />
-        </div>
-      )}
+      <div>
+        <span className="summary-label mono">PRAZO</span>
+        <CorrectedField corrections={item.corrections} fields={['deadline_at']}>
+          {item.deadlineAt ? (
+            <Deadline at={item.deadlineAt} precision="date_only" />
+          ) : (
+            <AbsentValue>Prazo não informado</AbsentValue>
+          )}
+        </CorrectedField>
+      </div>
+      <div>
+        <span className="summary-label mono">PUBLICAÇÃO</span>
+        <CorrectedField corrections={item.corrections} fields={['published_at']}>
+          {item.publishedAt ? (
+            item.publishedAt.slice(0, 10)
+          ) : (
+            <AbsentValue>Data de publicação desconhecida</AbsentValue>
+          )}
+        </CorrectedField>
+      </div>
     </section>
-  );
-}
-
-function Absent({ children, className }: { children: string; className?: string }) {
-  return (
-    <span className="absent hatch">
-      <span className={className}>{children}</span>
-    </span>
   );
 }

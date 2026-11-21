@@ -42,4 +42,9 @@ public class ActivityLogService {
   public List<ActivityRecord> forTaskRun(String taskRunId) {
     return repository.forTaskRun(taskRunId);
   }
+
+  /** Atividades registradas sobre o alvo, em ordem cronológica. */
+  public List<ActivityRecord> forTarget(String targetType, String targetId) {
+    return repository.forTarget(targetType, targetId);
+  }
 }

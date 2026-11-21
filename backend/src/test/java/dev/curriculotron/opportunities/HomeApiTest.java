@@ -8,6 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import dev.curriculotron.opportunities.application.DailySelectionService;
 import dev.curriculotron.opportunities.application.OpportunityIngestionService;
+import dev.curriculotron.opportunities.application.port.out.DedupeRepository;
+import dev.curriculotron.orchestration.application.port.out.RoutineRepository;
+import dev.curriculotron.orchestration.domain.Routine;
 import dev.curriculotron.shared.AppClock;
 import dev.curriculotron.shared.persistence.WriteExecutor;
 import dev.curriculotron.sources.JobSource;
@@ -15,6 +18,7 @@ import dev.curriculotron.support.*;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +36,8 @@ class HomeApiTest extends AppTestBase {
   @Autowired EntityManager em;
   @Autowired JdbcClient jdbc;
   @Autowired AppClock clock;
+  @Autowired DedupeRepository dedupe;
+  @Autowired RoutineRepository routines;
 
   @BeforeEach
   void reset() {
@@ -45,6 +51,7 @@ class HomeApiTest extends AppTestBase {
       em.createNativeQuery("DELETE FROM opportunity_source").executeUpdate();
       em.createNativeQuery("DELETE FROM opportunity_match_candidate").executeUpdate();
       em.createNativeQuery("DELETE FROM application").executeUpdate();
+      em.createNativeQuery("DELETE FROM routine_missed").executeUpdate();
       em.createNativeQuery("UPDATE opportunity SET merged_into = NULL").executeUpdate();
       em.createNativeQuery("DELETE FROM opportunity").executeUpdate();
       em.createNativeQuery("DELETE FROM integration_status").executeUpdate();
@@ -95,7 +102,9 @@ class HomeApiTest extends AppTestBase {
         .andExpect(jsonPath("$.applicationsWithNextActions").isArray())
         .andExpect(jsonPath("$.mailNeedingAttention").isArray())
         .andExpect(jsonPath("$.reviewQueueCount").value(0))
-        .andExpect(jsonPath("$.missedRoutines").isArray());
+        .andExpect(jsonPath("$.missedRoutines").isArray())
+        .andExpect(jsonPath("$.pendingReviewItems").isArray())
+        .andExpect(jsonPath("$.pendingReviewItems").isEmpty());
 
     ingestion.ingest(
         new JobSource.Item(
@@ -130,7 +139,107 @@ class HomeApiTest extends AppTestBase {
         .andExpect(
             jsonPath("$.selectionToday.items[0].compatibility.technologyStatus").value("matched"))
         .andExpect(jsonPath("$.reviewQueueCount").value(1))
+        .andExpect(jsonPath("$.pendingReviewItems.length()").value(1))
+        .andExpect(jsonPath("$.pendingReviewItems[0].kind").value("dedupe_candidate"))
+        .andExpect(jsonPath("$.pendingReviewItems[0].kindLabel").value("DUPLICATA · revisão"))
+        .andExpect(jsonPath("$.pendingReviewItems[0].targetRoute").value("/revisao"))
         .andExpect(jsonPath("$.integrations[?(@.id=='source:manual')].state").value(hasItem("ok")));
+  }
+
+  @Test
+  void listsEachPendingItemWithSafeInternalRouteAndKeepsLegacyFields() throws Exception {
+    TestSession.setup(mvc, TestSession.PASSWORD);
+    var s = TestSession.login(mvc, TestSession.PASSWORD);
+    String first = ingestJava("pending-1", "Desenvolvedor Java", "CI&T");
+    String second = ingestJava("pending-2", "Desenvolvedor Java", "CI&T");
+    String third = ingestJava("pending-3", "Engenheiro de Software", "Itaú");
+    String fourth = ingestJava("pending-4", "Engenheiro de Software", "Itaú");
+    writer.run(() -> {
+      dedupe.suggest(first, second, clock.now());
+      dedupe.suggest(third, fourth, clock.now().plusSeconds(1));
+      routines.save(
+          Routine.daily("home-routine", "search", null, LocalTime.of(7, 30), clock.now()));
+      routines.recordMissed("home-routine", Instant.parse("2026-11-13T10:30:00Z"));
+    });
+
+    var body =
+        mvc.perform(get("/api/home").session(s.session()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.reviewQueueCount").value(2))
+            .andExpect(jsonPath("$.mailNeedingAttention").isEmpty())
+            .andExpect(jsonPath("$.missedRoutines.length()").value(1))
+            .andExpect(jsonPath("$.missedRoutines[0].routineId").value("home-routine"))
+            .andExpect(jsonPath("$.pendingReviewItems.length()").value(3))
+            .andExpect(
+                jsonPath(
+                    "$.pendingReviewItems[*].kind",
+                    contains("dedupe_candidate", "dedupe_candidate", "missed_routine")))
+            .andExpect(jsonPath("$.pendingReviewItems[0].id").value("cand-" + pair(first, second)))
+            .andExpect(jsonPath("$.pendingReviewItems[0].kindLabel").value("DUPLICATA · revisão"))
+            .andExpect(
+                jsonPath("$.pendingReviewItems[0].title")
+                    .value("Possível vaga duplicada: Desenvolvedor Java · CI&T"))
+            .andExpect(jsonPath("$.pendingReviewItems[0].summary", containsString("coincidentes")))
+            .andExpect(jsonPath("$.pendingReviewItems[0].targetRoute").value("/revisao"))
+            .andExpect(jsonPath("$.pendingReviewItems[2].kindLabel").value("ROTINA NÃO EXECUTADA"))
+            .andExpect(jsonPath("$.pendingReviewItems[2].targetRoute").value("/atividades"))
+            .andExpect(
+                jsonPath("$.pendingReviewItems[2].summary", containsString("13/11 às 07:30")))
+            .andReturn();
+    String json = body.getResponse().getContentAsString();
+    List<String> routes = JsonPath.read(json, "$.pendingReviewItems[*].targetRoute");
+    assertThat(routes)
+        .allSatisfy(route -> {
+          assertThat(route).startsWith("/");
+          assertThat(route).doesNotStartWith("//");
+          assertThat(route).doesNotContain("\\");
+        });
+    // Paridade com needsYouCount do frontend: um item por pendência individual.
+    int legacyTotal =
+        (int) JsonPath.read(json, "$.reviewQueueCount")
+            + ((List<?>) JsonPath.read(json, "$.mailNeedingAttention")).size()
+            + ((List<?>) JsonPath.read(json, "$.missedRoutines")).size();
+    assertThat(((List<?>) JsonPath.read(json, "$.pendingReviewItems"))).hasSize(legacyTotal);
+  }
+
+  @Test
+  void dropsResolvedPendingItemsAndDoesNotMutateOnGet() throws Exception {
+    TestSession.setup(mvc, TestSession.PASSWORD);
+    var s = TestSession.login(mvc, TestSession.PASSWORD);
+    String first = ingestJava("pending-5", "Desenvolvedor Java", "CI&T");
+    String second = ingestJava("pending-6", "Desenvolvedor Java", "CI&T");
+    writer.run(() -> dedupe.suggest(first, second, clock.now()));
+    mvc.perform(get("/api/home").session(s.session()))
+        .andExpect(jsonPath("$.pendingReviewItems.length()").value(1));
+    long activityBefore = jdbc.sql("SELECT count(*) FROM activity_log").query(Long.class).single();
+
+    mvc.perform(
+            post("/api/dedupe-candidates/" + pair(first, second) + "/reject")
+                .session(s.session())
+                .header("X-CSRF-Token", s.csrf()))
+        .andExpect(status().isOk());
+
+    mvc.perform(get("/api/home").session(s.session()))
+        .andExpect(jsonPath("$.reviewQueueCount").value(0))
+        .andExpect(jsonPath("$.pendingReviewItems").isEmpty());
+    assertThat(jdbc.sql("SELECT count(*) FROM activity_log").query(Long.class).single())
+        .isEqualTo(activityBefore + 1);
+  }
+
+  private static String pair(String a, String b) {
+    return a.compareTo(b) < 0 ? a + ":" + b : b + ":" + a;
+  }
+
+  private String ingestJava(String externalId, String title, String company) {
+    return ingestion.ingest(
+        new JobSource.Item(
+            "lever:ciandt",
+            externalId,
+            "https://jobs.lever.co/ciandt/" + externalId,
+            "Requisitos: Java e Spring Boot\nRemoto",
+            title,
+            "Remoto"),
+        company);
   }
 
   @Test

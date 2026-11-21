@@ -37,6 +37,9 @@ const job = {
       fetchedAt: '2026-11-14T10:00:00Z',
     },
   ],
+  seniority: { label: null, status: 'absent', reason: null },
+  corrections: [],
+  timeline: [],
 };
 const assessment = {
   criteriaVersion: 1,
@@ -85,6 +88,7 @@ const home = {
   mailNeedingAttention: [],
   reviewQueueCount: 1,
   missedRoutines: [],
+  pendingReviewItems: [],
 };
 const list = (items: unknown[]) => ({ items, dataAsOf: null });
 const opportunitiesList = (items: unknown[]) => ({ items, dataAsOf: null, assessment });
@@ -101,10 +105,10 @@ test('cores: marcas e alternativas nos destaques dos cards', async ({ page }) =>
     '#EC7000',
     '#2F7D12',
     '#0070F2',
-    '#0369A1',
     '#6B6B73',
     '#6B6B73',
-    '#0F766E',
+    '#6B6B73',
+    '#6B6B73',
   ];
   const requests: string[] = [];
   page.on('request', (request) => requests.push(request.url()));
@@ -275,30 +279,148 @@ test('cores: identidade estável ao navegar e alterar decisões', async ({ page,
     await reopened.goto(new URL('/vagas', page.url()).href);
     const reopenedCards = reopened.locator('.job-card');
     await expect(reopenedCards.first()).toHaveCSS('--c', '#005CA9');
-    await expect(reopenedCards.nth(9)).toHaveCSS('--c', '#0369A1');
+    await expect(reopenedCards.nth(9)).toHaveCSS('--c', '#6B6B73');
   } finally {
     await context.close();
   }
 });
 
 test.beforeEach(async ({ page }) => {
+  const currentJob = structuredClone(job) as Omit<typeof job, 'corrections' | 'timeline'> & {
+    facts: string[];
+    corrections: Array<{
+      id: string;
+      fieldName: string;
+      previousValue: string | null;
+      correctedValue: string | null;
+      reason: string | null;
+      authorLabel: string;
+      correctedAt: string;
+    }>;
+    timeline: Array<{
+      id: string;
+      kind: string;
+      actorLabel: string;
+      description: string;
+      note: string | null;
+      at: string;
+    }>;
+  };
+  currentJob.facts = ['Java obrigatório', 'Docker desejável'];
+  currentJob.corrections = [];
+  currentJob.timeline = [
+    {
+      id: 'tl-1',
+      kind: 'discovered',
+      actorLabel: 'bot Busca de vagas',
+      description: 'Encontrada em SAP Careers.',
+      note: null,
+      at: '2026-11-14T10:00:00Z',
+    },
+  ];
+  const currentHome = {
+    ...home,
+    pendingReviewItems: [
+      {
+        id: 'pending-1',
+        kind: 'review_item',
+        kindLabel: 'FILA DE REVISÃO',
+        title: 'Confirmar unidade salarial',
+        summary: 'Valor citado sem indicar mensal ou anual.',
+        targetRoute: '/revisao',
+      },
+    ],
+  };
+
   await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\//, async (route) => {
-    const path = new URL(route.request().url()).pathname;
+    const request = route.request();
+    const path = new URL(request.url()).pathname;
     let data: unknown = list([]);
     if (path === '/api/session')
       data = { authenticated: true, setupRequired: false, csrfToken: 'test-csrf' };
-    else if (route.request().method() !== 'GET') data = {};
-    else if (path === '/api/home') data = home;
-    else if (path === '/api/opportunities') data = opportunitiesList([job]);
-    else if (path === '/api/opportunities/job-1') data = job;
+    else if (path === '/api/opportunities/job-1/corrections' && request.method() === 'POST') {
+      const payload = request.postDataJSON() as { location?: string; reason?: string };
+      if (payload.location) {
+        currentJob.location = payload.location;
+      }
+      currentJob.corrections = [
+        {
+          id: 'corr-1',
+          fieldName: 'location',
+          previousValue: 'São Leopoldo',
+          correctedValue: currentJob.location,
+          reason: payload.reason ?? null,
+          authorLabel: 'corrigido por você',
+          correctedAt: '2026-11-15T11:00:00Z',
+        },
+      ];
+      data = currentJob;
+    } else if (path === '/api/opportunities/job-1/external-visit' && request.method() === 'POST') {
+      currentJob.timeline.push({
+        id: 'tl-open-1',
+        kind: 'external_opened',
+        actorLabel: 'você',
+        description: 'Abriu o link da vaga.',
+        note: 'isso não registra candidatura',
+        at: '2026-11-15T11:05:00Z',
+      });
+      data = {};
+    } else if (request.method() !== 'GET') data = {};
+    else if (path === '/api/home') data = currentHome;
+    else if (path === '/api/opportunities') data = opportunitiesList([currentJob]);
+    else if (path === '/api/opportunities/job-1') data = currentJob;
     else if (path === '/api/applications') data = list([application]);
     else if (path === '/api/applications/app-1') data = application;
+    else if (path === '/api/salary-estimates')
+      data = {
+        items: [
+          {
+            id: 'sal-1',
+            criteria: {
+              company: 'SAP',
+              role: 'Desenvolvedor Java',
+              seniority: 'pleno',
+              location: 'São Leopoldo',
+              workMode: 'hybrid',
+              contractType: 'unknown',
+            },
+            monthlyMin: 7000,
+            monthlyMax: 10000,
+            originalMin: 7000,
+            originalMax: 10000,
+            originalUnit: 'monthly',
+            currency: 'BRL',
+            convertedFromAnnual: false,
+            sampleSize: 8,
+            source: 'Glassdoor',
+            sourceUrl: 'https://www.glassdoor.com.br/',
+            consultedAt: '2026-10-01T10:00:00Z',
+            expiresAt: '2026-11-01T10:00:00Z',
+            stale: true,
+            scope: 'company',
+          },
+        ],
+      };
+    else if (path === '/api/task-runs')
+      data = list([
+        {
+          id: 'run-1',
+          kind: 'search',
+          state: 'completed',
+          pauseReason: null,
+          sourcesConsulted: ['oracle:sap', 'lever:cwi'],
+          sourcesFailed: ['gupy:banco'],
+          errorSummary: 'Tempo esgotado em 1 fonte.',
+          startedAt: '2026-11-14T10:00:00Z',
+          finishedAt: '2026-11-14T10:02:00Z',
+        },
+      ]);
     else if (path === '/api/dedupe-candidates')
       data = list([
         {
           id: 'dup-1',
-          opportunityA: job,
-          opportunityB: { ...job, id: 'job-2' },
+          opportunityA: currentJob,
+          opportunityB: { ...currentJob, id: 'job-2' },
           signal: 'Mesmo título e empresa',
         },
       ]);
@@ -308,7 +430,7 @@ test.beforeEach(async ({ page }) => {
           id: 'review-1',
           kind: 'salary_ambiguous',
           summary: 'Confirmar unidade salarial',
-          targetRef: job.id,
+          targetRef: currentJob.id,
           createdAt: '2026-11-14T10:00:00Z',
         },
       ]);
@@ -379,9 +501,53 @@ test('J1: lista, detalhe, fontes, descarte e registro explícito', async ({ page
   await expect(page.getByRole('status')).toContainText('Vaga descartada');
 });
 
+test('padrões epistêmicos, correção pela evidência, linha do tempo e 6 estados', async ({
+  page,
+}) => {
+  await page.goto('/vagas/job-1');
+  await expect(page.getByText('você tem', { exact: true })).toBeVisible();
+  await expect(page.getByText('não está no perfil', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Linha do tempo' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Preparar' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Corrigir algum dado →' }).click();
+  await page.getByLabel('Local').fill('Porto Alegre (híbrido)');
+  await page.getByLabel('Motivo ou origem da correção').fill('Confirmado na descrição');
+  await page.getByRole('button', { name: 'Salvar correção' }).click();
+  await expect(
+    page.locator('.ep-corrected-field').filter({ hasText: 'Porto Alegre' }),
+  ).toContainText('corrigido por você');
+  await expect(page.getByText('Porto Alegre (híbrido)').first()).toBeVisible();
+
+  await page.evaluate(() => {
+    window.open = () => null;
+  });
+  const visitReq = page.waitForRequest('**/api/opportunities/job-1/external-visit');
+  await page.getByRole('link', { name: 'Abrir vaga no site ↗' }).evaluate((el) => {
+    el.addEventListener('click', (e) => e.preventDefault(), { once: true });
+    (el as HTMLAnchorElement).click();
+  });
+  await visitReq;
+  await expect(page.getByText(/isso não registra candidatura/i)).toBeVisible();
+
+  await page.goto('/atividades');
+  await expect(page.getByText('PARCIAL', { exact: true })).toBeVisible();
+  await expect(page.getByText('2 de 3 fontes consultadas')).toBeVisible();
+
+  await page.goto('/referencias-salariais');
+  await expect(page.getByText('DESATUALIZADO', { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Atualizar a partir de uma vaga →' }),
+  ).toHaveAttribute('href', '/vagas');
+
+  await page.goto('/bots');
+  await expect(page.getByText('VAZIO', { exact: true })).toBeVisible();
+});
+
 test('J3: correção de etapa mantém histórico e envia motivo', async ({ page }) => {
   await page.goto('/candidaturas/app-1');
-  await page.getByLabel('Etapa', { exact: true }).selectOption('contact_received');
+  await page.getByLabel('Etapa', { exact: true }).click();
+  await page.getByRole('option', { name: 'Contato recebido' }).click();
   await page.getByLabel('Motivo ou correção').fill('Corrigindo a etapa informada');
   const request = page.waitForRequest('**/api/applications/app-1/status');
   await page.getByRole('button', { name: 'Salvar etapa' }).click();
@@ -419,11 +585,14 @@ test('J5: sessão ausente não consulta dados privados', async ({ page }) => {
 for (const path of [
   '/',
   '/vagas',
+  '/referencias-salariais',
   '/vagas/job-1',
+  '/vagas/job-1#corrigir',
   '/candidaturas',
   '/candidaturas/app-1',
   '/revisao',
   '/revisao/duplicatas',
+  '/bots',
   '/integracoes',
   '/atividades',
   '/perfil',
@@ -431,7 +600,12 @@ for (const path of [
   '/empresas',
   '/dados',
 ]) {
-  test(`acessibilidade e largura: ${path}`, async ({ page }) => {
+  test(`acessibilidade e largura: ${path}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(
+      testInfo.project.name === 'mobile-360'
+        ? { width: 390, height: 844 }
+        : { width: 1280, height: 800 },
+    );
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(path);
@@ -442,6 +616,11 @@ for (const path of [
     await expect(page.getByRole('link', { name: 'Pular para o conteúdo' })).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('main')).toBeFocused();
+    if (path.endsWith('#corrigir')) {
+      await page.getByRole('button', { name: 'Corrigir algum dado →' }).click();
+      await expect(page.getByRole('form', { name: 'Corrigir dados da vaga' })).toBeVisible();
+      await page.locator('main').focus();
+    }
     expect(errors).toEqual([]);
     const overflowing = await page.locator('main *').evaluateAll((elements) =>
       elements
@@ -452,6 +631,75 @@ for (const path of [
         .map((el) => el.tagName + '.' + el.className),
     );
     expect(overflowing).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+
+    // FR-011: alvos visíveis com altura >= 44 px (checkbox medido pelo seu label associado).
+    const smallTargets = await page
+      .locator('a[href], button, input, select, textarea, summary')
+      .evaluateAll((elements) =>
+        elements
+          .filter((el) => {
+            if (el.closest('[aria-hidden="true"]')) return false;
+            const style = getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+            const rect = el.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          })
+          .map((el) => {
+            const target =
+              el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio')
+                ? (el.closest('label') ??
+                  (el.id ? document.querySelector(`label[for="${CSS.escape(el.id)}"]`) : null) ??
+                  el)
+                : el;
+            const rect = target.getBoundingClientRect();
+            return {
+              tag: target.tagName,
+              text: (target.textContent ?? '').trim().slice(0, 40),
+              height: Math.round(rect.height * 100) / 100,
+            };
+          })
+          .filter((entry) => entry.height < 44),
+      );
+    expect(smallTargets).toEqual([]);
+
+    // FR-011: foco de teclado visível nos controles interativos (incluindo checkboxes e nativos).
+    const mainControls = page
+      .locator('main')
+      .locator(
+        'a[href]:not([tabindex="-1"]):not([aria-hidden="true"]), ' +
+          'button:not(:disabled):not([tabindex="-1"]):not([aria-hidden="true"]), ' +
+          'input:not(:disabled):not([tabindex="-1"]):not([aria-hidden="true"]), ' +
+          'select:not(:disabled):not([tabindex="-1"]):not([aria-hidden="true"]), ' +
+          'textarea:not(:disabled):not([tabindex="-1"]):not([aria-hidden="true"])',
+      );
+    for (let i = 0; i < (await mainControls.count()); i++) {
+      const control = mainControls.nth(i);
+      const tabbable = await control.evaluate((el) => {
+        if (el.closest('[aria-hidden="true"]')) return false;
+        if ('disabled' in el && (el as HTMLButtonElement | HTMLInputElement).disabled) return false;
+        if ((el as HTMLElement).tabIndex < 0) return false;
+        if (el instanceof HTMLInputElement && el.type === 'hidden') return false;
+        const style = getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+      if (!tabbable) continue;
+      for (
+        let step = 0;
+        step < 100 && !(await control.evaluate((el) => el === document.activeElement));
+        step++
+      ) {
+        await page.keyboard.press('Tab');
+      }
+      await expect(control).toBeFocused();
+      await expect(control).toHaveCSS('outline-style', 'dashed');
+      await expect(control).toHaveCSS('outline-width', '3px');
+    }
+
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
   });

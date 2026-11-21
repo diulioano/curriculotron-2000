@@ -1,5 +1,16 @@
-import { parseOpportunitySummary, type OpportunitySummary } from './compatibility';
-import type { OpportunitySource } from './panel';
+import {
+  CORRECTABLE_OPPORTUNITY_FIELDS,
+  parseOpportunitySummary,
+  type CorrectableOpportunityField,
+  type OpportunitySummary,
+} from './compatibility';
+import type {
+  OpportunityCorrectionEntry,
+  OpportunitySource,
+  OpportunityTimelineEvent,
+  SeniorityAssessment,
+  TimelineEventKind,
+} from './panel';
 
 export const EVIDENCE_FIELDS = ['title', 'description'] as const;
 export type EvidenceField = (typeof EVIDENCE_FIELDS)[number];
@@ -13,6 +24,20 @@ export const MENTION_KINDS = [
   'uncertain',
 ] as const;
 export type MentionKind = (typeof MENTION_KINDS)[number];
+
+const SENIORITY_STATUSES = ['fact', 'inferred', 'absent', 'corrected_title'] as const;
+export { CORRECTABLE_OPPORTUNITY_FIELDS } from './compatibility';
+export type { CorrectableOpportunityField } from './compatibility';
+export type CorrectableField = CorrectableOpportunityField;
+const TIMELINE_KINDS: readonly TimelineEventKind[] = [
+  'discovered',
+  'selected_today',
+  'external_opened',
+  'corrected',
+  'discarded',
+  'restored',
+  'applied',
+] as const;
 
 export interface CompatibilityEvidenceItem {
   source: string;
@@ -40,6 +65,9 @@ export interface OpportunityDetailData extends OpportunitySummary {
   inferred: string[];
   missing: string[];
   sources: OpportunitySource[];
+  seniority: SeniorityAssessment;
+  corrections: OpportunityCorrectionEntry[];
+  timeline: OpportunityTimelineEvent[];
 }
 
 function asRecord(raw: unknown, name: string): Record<string, unknown> {
@@ -86,6 +114,54 @@ function parseDetailSource(raw: unknown, index: number): OpportunitySource {
   };
 }
 
+function parseSeniority(raw: unknown): SeniorityAssessment {
+  if (raw === undefined || raw === null) throw new Error('Campo seniority ausente.');
+  const obj = asRecord(raw, 'seniority');
+  return {
+    label: obj.label === undefined ? null : asNullableString(obj.label, 'seniority.label'),
+    status: asEnum(obj.status, SENIORITY_STATUSES, 'seniority.status'),
+    reason: obj.reason === undefined ? null : asNullableString(obj.reason, 'seniority.reason'),
+  };
+}
+
+function parseCorrectionEntry(raw: unknown, index: number): OpportunityCorrectionEntry {
+  const obj = asRecord(raw, `corrections[${index}]`);
+  return {
+    id: asString(obj.id, `corrections[${index}].id`),
+    fieldName: asEnum(
+      obj.fieldName,
+      CORRECTABLE_OPPORTUNITY_FIELDS,
+      `corrections[${index}].fieldName`,
+    ),
+    previousValue:
+      obj.previousValue === undefined
+        ? null
+        : asNullableString(obj.previousValue, `corrections[${index}].previousValue`),
+    correctedValue:
+      obj.correctedValue === undefined
+        ? null
+        : asNullableString(obj.correctedValue, `corrections[${index}].correctedValue`),
+    reason:
+      obj.reason === undefined
+        ? null
+        : asNullableString(obj.reason, `corrections[${index}].reason`),
+    authorLabel: asString(obj.authorLabel, `corrections[${index}].authorLabel`),
+    correctedAt: asString(obj.correctedAt, `corrections[${index}].correctedAt`),
+  };
+}
+
+function parseTimelineEvent(raw: unknown, index: number): OpportunityTimelineEvent {
+  const obj = asRecord(raw, `timeline[${index}]`);
+  return {
+    id: asString(obj.id, `timeline[${index}].id`),
+    kind: asEnum(obj.kind, TIMELINE_KINDS, `timeline[${index}].kind`),
+    actorLabel: asString(obj.actorLabel, `timeline[${index}].actorLabel`),
+    description: asString(obj.description, `timeline[${index}].description`),
+    note: obj.note === undefined ? null : asNullableString(obj.note, `timeline[${index}].note`),
+    at: asString(obj.at, `timeline[${index}].at`),
+  };
+}
+
 export function parseCompatibilityEvidenceItem(raw: unknown): CompatibilityEvidenceItem {
   const obj = asRecord(raw, 'CompatibilityEvidenceItem');
   return {
@@ -124,6 +200,8 @@ export function parseOpportunityDetail(raw: unknown): OpportunityDetailData {
   if (!Array.isArray(obj.sources)) {
     throw new Error('Campo sources inválido.');
   }
+  if (!Array.isArray(obj.corrections)) throw new Error('Campo corrections inválido.');
+  if (!Array.isArray(obj.timeline)) throw new Error('Campo timeline inválido.');
   return {
     ...summary,
     compatibilityEvidence: obj.compatibilityEvidence.map((item) =>
@@ -134,5 +212,8 @@ export function parseOpportunityDetail(raw: unknown): OpportunityDetailData {
     inferred: asStringArray(obj.inferred, 'inferred'),
     missing: asStringArray(obj.missing, 'missing'),
     sources: obj.sources.map((item, index) => parseDetailSource(item, index)),
+    seniority: parseSeniority(obj.seniority),
+    corrections: obj.corrections.map((entry, index) => parseCorrectionEntry(entry, index)),
+    timeline: obj.timeline.map((event, index) => parseTimelineEvent(event, index)),
   };
 }

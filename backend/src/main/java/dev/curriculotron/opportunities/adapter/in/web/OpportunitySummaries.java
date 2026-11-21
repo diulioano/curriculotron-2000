@@ -2,15 +2,20 @@ package dev.curriculotron.opportunities.adapter.in.web;
 
 import dev.curriculotron.opportunities.application.port.out.CompatibilityRepository;
 import dev.curriculotron.opportunities.application.port.out.EvidenceRepository;
+import dev.curriculotron.opportunities.application.port.out.OpportunityCorrectionRepository;
 import dev.curriculotron.opportunities.application.port.out.OpportunitySourceRepository;
 import dev.curriculotron.opportunities.domain.CompatibilityAssessment;
+import dev.curriculotron.opportunities.domain.CorrectableOpportunityField;
 import dev.curriculotron.opportunities.domain.Opportunity;
 import dev.curriculotron.opportunities.domain.VacancyEvidence;
 import dev.curriculotron.salary.application.SalaryEstimateService;
 import dev.curriculotron.sources.PublicationStore;
 import dev.curriculotron.sources.SearchCriteriaRepository;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +28,7 @@ public class OpportunitySummaries {
   private final CompatibilityRepository assessments;
   private final EvidenceRepository evidence;
   private final SearchCriteriaRepository criteria;
+  private final OpportunityCorrectionRepository corrections;
 
   public OpportunitySummaries(
       OpportunitySourceRepository sources,
@@ -30,13 +36,15 @@ public class OpportunitySummaries {
       PublicationStore publications,
       CompatibilityRepository assessments,
       EvidenceRepository evidence,
-      SearchCriteriaRepository criteria) {
+      SearchCriteriaRepository criteria,
+      OpportunityCorrectionRepository corrections) {
     this.sources = sources;
     this.salary = salary;
     this.publications = publications;
     this.assessments = assessments;
     this.evidence = evidence;
     this.criteria = criteria;
+    this.corrections = corrections;
   }
 
   public record DetailProjection(
@@ -49,12 +57,21 @@ public class OpportunitySummaries {
   @Transactional(readOnly = true)
   public List<OpportunitySummary> of(List<Opportunity> items) {
     long criteriaVersion = criteria.current().version();
-    return items.stream().map(item -> of(item, criteriaVersion)).toList();
+    var ids = items.stream().map(Opportunity::id).toList();
+    Map<String, String> deadlines = corrections.deadlinesAt(ids);
+    Map<String, Set<CorrectableOpportunityField>> corrected = corrections.correctedFieldsOf(ids);
+    return items.stream()
+        .map(item -> of(item, criteriaVersion, deadlines.get(item.id()), corrected.get(item.id())))
+        .toList();
   }
 
   @Transactional(readOnly = true)
   public OpportunitySummary of(Opportunity item) {
-    return of(item, criteria.current().version());
+    return of(
+        item,
+        criteria.current().version(),
+        corrections.deadlineAt(item.id()).orElse(null),
+        corrections.correctedFields(item.id()));
   }
 
   @Transactional(readOnly = true)
@@ -63,7 +80,13 @@ public class OpportunitySummaries {
     Optional<CompatibilityAssessment> assessment = assessments.find(item.id());
     List<OpportunitySourceRepository.Source> found = sources.forOpportunity(item.id());
     CompatibilitySummary compatibility = compatibility(item.id(), criteriaVersion, assessment);
-    OpportunitySummary summary = summaryFor(item, found, compatibility);
+    OpportunitySummary summary =
+        summaryFor(
+            item,
+            found,
+            compatibility,
+            corrections.deadlineAt(item.id()).orElse(null),
+            corrections.correctedFields(item.id()));
     List<OpportunityDetailResponse.CompatibilityEvidenceView> evidenceViews =
         assessment
             .map(a ->
@@ -94,17 +117,23 @@ public class OpportunitySummaries {
         summary, evidenceViews, criteriaView, evidence.forOpportunity(item.id()), found);
   }
 
-  private OpportunitySummary of(Opportunity item, long criteriaVersion) {
+  private OpportunitySummary of(
+      Opportunity item,
+      long criteriaVersion,
+      String deadlineAt,
+      Set<CorrectableOpportunityField> correctedFields) {
     List<OpportunitySourceRepository.Source> found = sources.forOpportunity(item.id());
     CompatibilitySummary compatibility =
         compatibility(item.id(), criteriaVersion, assessments.find(item.id()));
-    return summaryFor(item, found, compatibility);
+    return summaryFor(item, found, compatibility, deadlineAt, correctedFields);
   }
 
   private OpportunitySummary summaryFor(
       Opportunity item,
       List<OpportunitySourceRepository.Source> found,
-      CompatibilitySummary compatibility) {
+      CompatibilitySummary compatibility,
+      String deadlineAt,
+      Set<CorrectableOpportunityField> correctedFields) {
     List<String> fitReasons = compatibility.current() ? item.fitReasons() : List.of();
     return new OpportunitySummary(
         item.id(),
@@ -117,13 +146,21 @@ public class OpportunitySummaries {
         fitReasons,
         item.userDecision(),
         item.availability(),
-        null,
+        deadlineAt,
         publications.find(item.id()),
         found.isEmpty() ? null : found.getLast(),
         null,
         salary.reference(item),
         salary.glassdoorUrl(item),
-        compatibility);
+        compatibility,
+        inFieldOrder(correctedFields));
+  }
+
+  /** Ordem estável do enum, independente da ordem de gravação das correções. */
+  private static List<CorrectableOpportunityField> inFieldOrder(
+      Set<CorrectableOpportunityField> fields) {
+    if (fields == null || fields.isEmpty()) return List.of();
+    return Arrays.stream(CorrectableOpportunityField.values()).filter(fields::contains).toList();
   }
 
   private CompatibilitySummary compatibility(

@@ -50,9 +50,11 @@
   --rule: #e9e4d4;
   --line-soft: #b9b3a2;
   --hatch-soft: #c9c2ae;
+  --hatch-stale: #e2dccb;
+  --graphite: #6b6b73;
   --highlight: #ffe45c;
   --danger: #9a2a12;
-  --ok: #2f7d12;
+  --ok: #1f6b0e;
   --warn: #8a5a00;
 
   --font-hand: 'Kalam', cursive;
@@ -91,6 +93,11 @@ body {
 
 a {
   color: var(--ink);
+}
+:where(a[href]) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 a:hover {
   color: var(--ink-hover);
@@ -284,8 +291,12 @@ h3 {
   transform: translate(-1px, -1px) rotate(-0.4deg);
 }
 @media (prefers-reduced-motion: reduce) {
-  .bt {
+  .bt,
+  .bt::before,
+  .bt::after,
+  .cloud {
     transition: none;
+    animation: none;
   }
   .bt:hover:not(:disabled) {
     transform: none;

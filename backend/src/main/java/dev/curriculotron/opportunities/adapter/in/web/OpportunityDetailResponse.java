@@ -2,7 +2,9 @@ package dev.curriculotron.opportunities.adapter.in.web;
 
 import dev.curriculotron.opportunities.application.port.out.OpportunitySourceRepository.Source;
 import dev.curriculotron.opportunities.domain.CompatibilityAssessment;
+import dev.curriculotron.opportunities.domain.CorrectableOpportunityField;
 import dev.curriculotron.opportunities.domain.Opportunity;
+import dev.curriculotron.opportunities.domain.SeniorityAssessment;
 import dev.curriculotron.salary.application.SalaryReference;
 import java.util.List;
 import java.util.Objects;
@@ -30,7 +32,11 @@ public record OpportunityDetailResponse(
     List<String> facts,
     List<String> inferred,
     List<String> missing,
-    List<Source> sources) {
+    List<Source> sources,
+    List<CorrectableOpportunityField> correctedFields,
+    List<OpportunityCorrectionView> corrections,
+    SeniorityAssessment seniority,
+    List<OpportunityTimelineView> timeline) {
   public record CompatibilityEvidenceView(
       String source,
       String sourceUrl,
@@ -59,11 +65,15 @@ public record OpportunityDetailResponse(
 
   public OpportunityDetailResponse {
     Objects.requireNonNull(compatibility);
+    Objects.requireNonNull(seniority);
+    timeline = List.copyOf(timeline);
     fitReasons = List.copyOf(fitReasons);
     compatibilityEvidence = List.copyOf(compatibilityEvidence);
     facts = List.copyOf(facts);
     inferred = List.copyOf(inferred);
     missing = List.copyOf(missing);
     sources = List.copyOf(sources);
+    correctedFields = List.copyOf(correctedFields);
+    corrections = List.copyOf(corrections);
   }
 }

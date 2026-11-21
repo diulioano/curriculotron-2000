@@ -19,11 +19,11 @@ describe('identidade de cor por empresa', () => {
     expect(companyColor(name)).toBe(GRAPHITE);
   });
 
-  it('atribui alternativa estável sem confundir prefixos com marca', () => {
-    expect(companyColor('Empresa Nova')).toBe('#0369A1');
-    expect(companyColor('SAP Outra Empresa')).toBe('#0F766E');
-    expect(companyColor('constructor')).toMatch(/^#[0-9A-F]{6}$/);
-    expect(companyColor('__proto__')).toMatch(/^#[0-9A-F]{6}$/);
+  it('retorna grafite neutro para qualquer empresa fora das 8 marcas conferidas', () => {
+    expect(companyColor('Empresa Nova')).toBe(GRAPHITE);
+    expect(companyColor('SAP Outra Empresa')).toBe(GRAPHITE);
+    expect(companyColor('constructor')).toBe(GRAPHITE);
+    expect(companyColor('__proto__')).toBe(GRAPHITE);
   });
 
   it.each(['SAP', 'CI&T', 'Empresa Nova', '🧩 Tecnologia'])(
@@ -39,8 +39,8 @@ describe('identidade de cor por empresa', () => {
     for (const name of names.toReversed().slice(1)) {
       expect(companyColor(name)).toBe(original.get(name));
     }
-    expect(companyColor('🧩 Tecnologia')).toBe('#BE185D');
-    expect(companyColor('Empresa Nova')).toBe('#0369A1');
+    expect(companyColor('🧩 Tecnologia')).toBe(GRAPHITE);
+    expect(companyColor('Empresa Nova')).toBe(GRAPHITE);
   });
 
   it.each([
@@ -50,16 +50,12 @@ describe('identidade de cor por empresa', () => {
     'PicPay Outra Empresa',
     'Sicredi Outra',
     'Itau Outra',
-  ])('não atribui marca a nome apenas parecido: %s', (name) => {
-    expect(companyColor(name)).toMatch(/^#[0-9A-F]{6}$/);
-    expect(['#0070F2', '#F70773', '#FA5A50', '#21C25E', '#2F7D12', '#EC7000']).not.toContain(
-      companyColor(name),
-    );
+  ])('não atribui marca a nome apenas parecido e retorna grafite: %s', (name) => {
+    expect(companyColor(name)).toBe(GRAPHITE);
   });
 
-  it('nome longo continua sendo empresa identificada', () => {
+  it('nome longo fora das marcas conferidas também recebe grafite neutro', () => {
     const name = 'Tecnologia 🧩 '.repeat(1000);
-    expect(companyColor(name)).toMatch(/^#[0-9A-F]{6}$/);
-    expect(companyColor(name)).not.toBe(GRAPHITE);
+    expect(companyColor(name)).toBe(GRAPHITE);
   });
 });

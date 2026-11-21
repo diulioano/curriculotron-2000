@@ -1,22 +1,30 @@
-import { Link } from 'react-router';
+import { PageHeader } from '../components/Panel';
+import { SurfaceStateBlock } from '../components/SurfaceState';
 
-/** Página ainda não implementada (próximas fases do tasks.md). */
+/** Tela em construção (ex.: Bots) padronizada com PageHeader + SurfaceStateBlock. */
 export function Placeholder({ title }: { title: string }) {
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <h1 style={{ fontSize: 40 }}>{title}</h1>
-      <p className="muted" style={{ margin: 0 }}>
-        Esta tela ainda está em construção.
-      </p>
-    </section>
+    <div className="stack">
+      <PageHeader title={title} eyebrow="Coordenador e automações" />
+      <SurfaceStateBlock
+        kind="empty"
+        title="Esta tela ainda está em construção."
+        body="A configuração visual do coordenador de bots e fluxos assistidos será conectada aqui. Enquanto isso, você pode acompanhar execuções em Atividades e revisar critérios de busca."
+        action={{ label: 'Ver atividades →', to: '/atividades' }}
+      />
+    </div>
   );
 }
 
 export function NotFound() {
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <h1 style={{ fontSize: 40 }}>Página não encontrada</h1>
-      <Link to="/">Voltar para Hoje →</Link>
-    </section>
+    <div className="stack">
+      <PageHeader title="Página não encontrada" eyebrow="Rota desconhecida" />
+      <SurfaceStateBlock
+        kind="empty"
+        title="Este endereço não existe no painel."
+        action={{ label: 'Voltar para Hoje →', to: '/' }}
+      />
+    </div>
   );
 }

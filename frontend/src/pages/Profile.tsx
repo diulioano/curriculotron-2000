@@ -102,7 +102,7 @@ function ProfileForm({ data }: { data: ProfileData }) {
       <div className="actions">
         <button
           type="button"
-          className="btn bt-sec dsh"
+          className="btn bt bt-sec dsh"
           onClick={() =>
             setFacts([
               ...facts,
@@ -120,7 +120,7 @@ function ProfileForm({ data }: { data: ProfileData }) {
         </button>
         <button
           type="submit"
-          className="btn bt-pri"
+          className="btn bt bt-pri"
           disabled={save.isPending || facts.some((f) => !f.statement.trim())}
         >
           Salvar e marcar como revisado
@@ -146,7 +146,7 @@ export function Profile() {
     <div className="stack">
       <PageHeader title="Seu perfil" eyebrow="A busca começa pelo que você sabe">
         <button
-          className="btn bt-sec dsh"
+          className="btn bt bt-sec dsh"
           disabled={reimport.isPending}
           onClick={() => reimport.mutate()}
         >
@@ -311,13 +311,13 @@ function CriteriaForm({ data }: { data: CriteriaResponse }) {
         Aceitar vagas júnior apenas com justificativa
       </label>
       <div className="actions">
-        <button type="submit" className="btn bt-pri" disabled={save.isPending}>
+        <button type="submit" className="btn bt bt-pri" disabled={save.isPending}>
           Salvar critérios
         </button>
         {conflictMessage && (
           <button
             type="button"
-            className="btn bt-sec dsh"
+            className="btn bt bt-sec dsh"
             disabled={reloading}
             onClick={() => void reloadCriteria()}
           >
@@ -445,7 +445,7 @@ function AssessmentPanel({ initialStatus }: { initialStatus: RefreshStatus }) {
         {canTriggerReassess && !isUnconfirmed && (
           <button
             type="button"
-            className="btn bt-sec dsh"
+            className="btn bt bt-sec dsh"
             disabled={reassess.isPending || isRunning}
             onClick={() => reassess.mutate(currentStatus.criteriaVersion)}
           >
@@ -455,7 +455,7 @@ function AssessmentPanel({ initialStatus }: { initialStatus: RefreshStatus }) {
         {isUnconfirmed && (
           <button
             type="button"
-            className="btn bt-sec dsh"
+            className="btn bt bt-sec dsh"
             onClick={() =>
               void consultStatusAfterUncertainty('Status consultado manualmente.', false)
             }
@@ -517,7 +517,7 @@ export function Companies() {
                 </div>
                 {tier === 'suggested' && (
                   <button
-                    className="btn bt-sec dsh"
+                    className="btn bt bt-sec dsh"
                     disabled={change.isPending}
                     onClick={() =>
                       change.mutate({
@@ -566,7 +566,11 @@ export function Companies() {
           />
         </div>
         <div>
-          <button type="submit" className="btn bt-pri" disabled={change.isPending || !name.trim()}>
+          <button
+            type="submit"
+            className="btn bt bt-pri"
+            disabled={change.isPending || !name.trim()}
+          >
             Adicionar empresa
           </button>
         </div>

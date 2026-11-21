@@ -12,9 +12,17 @@ class OpportunitySourcePersistenceAdapter implements OpportunitySourceRepository
     this.sources = sources;
   }
 
+  @Override
   public List<Source> forOpportunity(String id) {
     return sources.findByOpportunityIdOrderByFetchedAtAscIdAsc(id).stream()
         .map(source -> new Source(source.source(), source.canonicalUrl(), source.fetchedAt()))
+        .toList();
+  }
+
+  @Override
+  public List<Discovery> discoveries(String id) {
+    return sources.findByOpportunityIdOrderByCreatedAtAscIdAsc(id).stream()
+        .map(source -> new Discovery(source.id(), source.source(), source.createdAt()))
         .toList();
   }
 }

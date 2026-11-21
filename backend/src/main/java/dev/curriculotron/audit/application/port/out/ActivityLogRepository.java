@@ -14,4 +14,7 @@ public interface ActivityLogRepository {
 
   /** Em ordem cronológica. */
   List<ActivityRecord> forTaskRun(String taskRunId);
+
+  /** Atividades sobre um alvo, em ordem cronológica. */
+  List<ActivityRecord> forTarget(String targetType, String targetId);
 }

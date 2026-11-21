@@ -3,12 +3,14 @@ import {
   parseHomeData,
   parseOpportunityListResponse,
   type CompatibilitySummary,
+  type CorrectableOpportunityField,
   type OpportunityListResponse,
   type OpportunitySummary,
   type RefreshStatus,
 } from './compatibility';
 import {
   parseOpportunityDetail,
+  type CorrectableField,
   type CompatibilityCriteriaSnapshot,
   type CompatibilityEvidenceItem,
   type OpportunityDetailData,
@@ -22,6 +24,7 @@ export type {
   OpportunityDetailData,
   OpportunityListResponse,
   OpportunitySummary,
+  CorrectableOpportunityField,
   RefreshStatus,
 };
 
@@ -57,6 +60,8 @@ export interface Opportunity {
   /** Nível da empresa, quando o serviço informar. */
   companyTier?: 'priority' | 'suggested' | null;
   compatibility?: CompatibilitySummary;
+  /** Correções presentes no registro; ausente em respostas antigas equivale a lista vazia. */
+  correctedFields?: CorrectableOpportunityField[];
 }
 export interface SalaryObservation {
   id: string;
@@ -89,6 +94,36 @@ export interface OpportunitySource {
   url: string;
   fetchedAt: string;
 }
+export interface OpportunityCorrectionEntry {
+  id: string;
+  fieldName: CorrectableField;
+  previousValue: string | null;
+  correctedValue: string | null;
+  reason: string | null;
+  authorLabel: string;
+  correctedAt: string;
+}
+export type TimelineEventKind =
+  | 'discovered'
+  | 'selected_today'
+  | 'external_opened'
+  | 'corrected'
+  | 'discarded'
+  | 'restored'
+  | 'applied';
+export interface OpportunityTimelineEvent {
+  id: string;
+  kind: TimelineEventKind;
+  actorLabel: string;
+  description: string;
+  note: string | null;
+  at: string;
+}
+export interface SeniorityAssessment {
+  label: string | null;
+  status: 'fact' | 'inferred' | 'absent' | 'corrected_title';
+  reason: string | null;
+}
 export interface OpportunityDetail extends Opportunity {
   compatibilityEvidence?: CompatibilityEvidenceItem[];
   compatibilityCriteria?: CompatibilityCriteriaSnapshot | null;
@@ -96,6 +131,9 @@ export interface OpportunityDetail extends Opportunity {
   inferred: string[];
   missing: string[];
   sources: OpportunitySource[];
+  seniority: SeniorityAssessment;
+  corrections: OpportunityCorrectionEntry[];
+  timeline: OpportunityTimelineEvent[];
 }
 export interface Integration {
   id: string;
@@ -131,6 +169,16 @@ export interface ApplicationDetail extends Application {
     evidence: { ref: string; quote: string } | null;
   }[];
 }
+export type PendingReviewKind =
+  'dedupe_candidate' | 'review_item' | 'email_attention' | 'missed_routine';
+export interface PendingReviewItem {
+  id: string;
+  kind: PendingReviewKind;
+  kindLabel: string;
+  title: string;
+  summary: string;
+  targetRoute: string;
+}
 export interface HomeData {
   dataAsOf: string | null;
   assessment: RefreshStatus;
@@ -146,6 +194,7 @@ export interface HomeData {
   mailNeedingAttention: { id: string; subject: string }[];
   reviewQueueCount: number;
   missedRoutines: { routineId: string; scheduledFor: string }[];
+  pendingReviewItems: PendingReviewItem[];
 }
 export interface DedupeCandidate {
   id: string;
@@ -162,9 +211,32 @@ export interface ReviewItem {
 }
 export interface TaskRun {
   id: string;
+  kind?: string;
   state: 'queued' | 'running' | 'completed' | 'failed' | 'paused';
   pauseReason: string | null;
+  sourcesConsulted?: string[];
+  sourcesFailed?: string[];
   errorSummary: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  createdAt?: string;
+}
+export interface OpportunityCorrectionPayload {
+  title?: string;
+  companyName?: string;
+  location?: string;
+  workMode?: Opportunity['workMode'];
+  contractType?: Opportunity['contractType'];
+  salary?: {
+    min: number | null;
+    max: number | null;
+    unit: 'monthly' | 'hourly' | 'yearly' | 'unknown';
+  };
+  clearSalary?: boolean;
+  availability?: Opportunity['availability'];
+  deadlineAt?: string | null;
+  publishedAt?: string | null;
+  reason?: string;
 }
 export const panel = {
   home: async (signal?: AbortSignal): Promise<HomeData> =>
@@ -184,4 +256,15 @@ export const panel = {
 };
 export function post<T = void>(path: string, body?: unknown) {
   return api<T>(path, { method: 'POST', body, idempotencyKey: crypto.randomUUID() });
+}
+export async function correctOpportunity(
+  id: string,
+  payload: OpportunityCorrectionPayload,
+): Promise<OpportunityDetailData> {
+  return parseOpportunityDetail(
+    await post<unknown>(`/api/opportunities/${encodeURIComponent(id)}/corrections`, payload),
+  );
+}
+export function recordExternalVisit(id: string): Promise<void> {
+  return post<void>(`/api/opportunities/${encodeURIComponent(id)}/external-visit`);
 }

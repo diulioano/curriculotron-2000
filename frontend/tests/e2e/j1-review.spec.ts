@@ -133,6 +133,88 @@ test('J1: detalhe separa fatos e inferências, mostra salário a confirmar, font
   expect(posts).toEqual([]);
 });
 
+// T038 — Feature 005: visita externa e correção manual contra o backend real.
+test('J1: abrir no site só registra a visita; correção manual persiste e preserva a fonte', async ({
+  page,
+  context,
+}) => {
+  // O popup da vaga aponta para um domínio de teste: responde localmente, sem rede externa.
+  await context.route('https://vagas.example.test/**', (route) =>
+    route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Vaga externa</title>' }),
+  );
+  const posts: string[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'POST') posts.push(new URL(r.url()).pathname);
+  });
+  const visitPath = `/api/opportunities/${noSalary.id}/external-visit`;
+  const correctionPath = `/api/opportunities/${noSalary.id}/corrections`;
+
+  await page.goto(`/vagas/${noSalary.id}`);
+  const timeline = page.getByRole('region', { name: 'Linha do tempo' });
+  await expect(timeline).toContainText('Encontrada em oracle:picpay.');
+  const visits = timeline.getByRole('listitem').filter({ hasText: 'Abriu o link da vaga.' });
+  const previousVisitCount = await visits.count();
+
+  // 1) "Abrir vaga no site ↗" chama o backend real (204) e abre a vaga em outra aba.
+  const [popup, visit] = await Promise.all([
+    context.waitForEvent('page'),
+    page.waitForResponse(
+      (r) => new URL(r.url()).pathname === visitPath && r.request().method() === 'POST',
+    ),
+    page.getByRole('link', { name: 'Abrir vaga no site ↗' }).click(),
+  ]);
+  expect(visit.status()).toBe(204);
+  await popup.close();
+
+  await expect(visits).toHaveCount(previousVisitCount + 1);
+  await expect(visits.last()).toContainText('(isso não registra candidatura)');
+  await expect(page.getByRole('button', { name: 'Me candidatei' })).toBeEnabled();
+  expect(posts).toEqual([visitPath]);
+  const applications = await page.request.get('/api/applications');
+  expect(((await applications.json()) as { items: unknown[] }).items).toEqual([]);
+
+  // 2) "Corrigir algum dado →" grava a correção no backend real.
+  await page.getByRole('button', { name: 'Corrigir algum dado →' }).click();
+  const form = page.getByRole('form', { name: 'Corrigir dados da vaga' });
+  await form.getByLabel('Local').fill('São Leopoldo, RS');
+  await form.getByLabel('Salário mínimo (R$)').fill('9500');
+  await form.getByLabel('Salário máximo (R$)').fill('12000');
+  await form.getByLabel('Motivo ou origem da correção').fill('Confirmado no edital oficial');
+  await expectNoHorizontalOverflow(page);
+  const [correction] = await Promise.all([
+    page.waitForResponse(
+      (r) => new URL(r.url()).pathname === correctionPath && r.request().method() === 'POST',
+    ),
+    form.getByRole('button', { name: 'Salvar correção' }).click(),
+  ]);
+  expect(correction.status()).toBe(200);
+  await expect(form).toHaveCount(0);
+
+  // 3) Após recarregar, a correção persiste e a fonte original continua intacta.
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: noSalary.title })).toBeVisible();
+  await expect(page.locator('.salary')).toContainText(/9\.500 – 12\.000/);
+  await expect(page.getByText('São Leopoldo, RS').first()).toBeVisible();
+  const latest = page.getByTestId('latest-correction');
+  await expect(latest).toContainText('corrigido por você');
+  await expect(latest).toContainText('Confirmado no edital oficial');
+  const evidence = page.locator('section[aria-labelledby="evidencia"]');
+  const source = evidence.getByRole('link', { name: /oracle:picpay/ });
+  await expect(source).toHaveAttribute('href', noSalary.source!.url);
+  await expect(evidence.locator(`time[datetime="${FETCHED_AT}"]`)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Me candidatei' })).toBeEnabled();
+  await expectNoHorizontalOverflow(page);
+
+  await page.goto('/vagas');
+  const card = page.locator('.job-card').filter({
+    has: page.getByRole('link', { name: noSalary.title }),
+  });
+  const salary = card.locator('.job-salary');
+  await expect(salary).toContainText(/9\.500 – 12\.000/);
+  await expect(salary).toContainText('corrigido por você');
+  await expect(salary).not.toContainText(/✓|declarado/i);
+});
+
 test('J1: descartar tira a vaga da seleção; restaurar é explícito', async ({ page }) => {
   await page.goto(`/vagas/${noSalary.id}`);
   await page.getByRole('button', { name: 'Descartar vaga' }).click();

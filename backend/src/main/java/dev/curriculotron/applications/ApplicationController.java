@@ -1,5 +1,6 @@
 package dev.curriculotron.applications;
 
+import dev.curriculotron.opportunities.application.OpportunityNotFoundException;
 import dev.curriculotron.shared.web.ApiException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -57,7 +58,7 @@ public class ApplicationController {
   private <T> T call(Supplier<T> operation) {
     try {
       return operation.get();
-    } catch (NoSuchElementException e) {
+    } catch (NoSuchElementException | OpportunityNotFoundException e) {
       throw ApiException.notFound("Registro não encontrado.");
     } catch (IllegalStateException e) {
       throw ApiException.conflict(

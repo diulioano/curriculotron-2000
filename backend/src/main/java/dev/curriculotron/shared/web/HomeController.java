@@ -29,6 +29,7 @@ public class HomeController {
   private final AppClock clock;
   private final OpportunitySummaries summaries;
   private final CompatibilityStatusService compatibility;
+  private final PendingReviewItems pendingItems;
 
   public HomeController(
       ApplicationService applications,
@@ -38,7 +39,8 @@ public class HomeController {
       RoutineRepository routines,
       AppClock clock,
       OpportunitySummaries summaries,
-      CompatibilityStatusService compatibility) {
+      CompatibilityStatusService compatibility,
+      PendingReviewItems pendingItems) {
     this.applications = applications;
     this.jobs = jobs;
     this.candidates = candidates;
@@ -47,6 +49,7 @@ public class HomeController {
     this.clock = clock;
     this.summaries = summaries;
     this.compatibility = compatibility;
+    this.pendingItems = pendingItems;
   }
 
   public record IntegrationSummary(
@@ -79,12 +82,14 @@ public class HomeController {
       List<ApplicationSummary> applicationsWithNextActions,
       List<MailSummary> mailNeedingAttention,
       int reviewQueueCount,
-      List<MissedRoutine> missedRoutines) {
+      List<MissedRoutine> missedRoutines,
+      List<PendingReviewItem> pendingReviewItems) {
     public HomeResponse {
       integrations = List.copyOf(integrations);
       applicationsWithNextActions = List.copyOf(applicationsWithNextActions);
       mailNeedingAttention = List.copyOf(mailNeedingAttention);
       missedRoutines = List.copyOf(missedRoutines);
+      pendingReviewItems = List.copyOf(pendingReviewItems);
     }
   }
 
@@ -105,17 +110,21 @@ public class HomeController {
                     string(integration.lastAttemptAt()),
                     integration.detail()))
             .toList();
+    var openCandidates = candidates.open();
+    var missed = routines.unacknowledgedMissed();
+    List<MailSummary> mail = List.of();
     return new HomeResponse(
         status.latestSuccess().map(HomeController::string).orElse(null),
         compatibility.current(),
         integrations,
         new SelectionToday(today, visible.size(), consumedCount, 10, visible),
         applications.withNextActions(),
-        List.of(),
-        candidates.open().size(),
-        routines.unacknowledgedMissed().stream()
-            .map(missed -> new MissedRoutine(missed.routineId(), string(missed.scheduledFor())))
-            .toList());
+        mail,
+        openCandidates.size(),
+        missed.stream()
+            .map(routine -> new MissedRoutine(routine.routineId(), string(routine.scheduledFor())))
+            .toList(),
+        pendingItems.of(openCandidates, mail, missed));
   }
 
   private static String string(Instant value) {

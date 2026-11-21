@@ -71,7 +71,7 @@ export function Opportunities() {
     <div className="stack">
       <PageHeader title="Vagas" eyebrow="Oportunidades, sem o ruído">
         <button
-          className="btn bt-sec dsh"
+          className="btn bt bt-sec dsh"
           onClick={() => setManual(!manual)}
           aria-expanded={manual}
         >
@@ -93,24 +93,31 @@ export function Opportunities() {
           Buscar publicações dos últimos 30 dias, ou escolher outro período. Vagas sem data ficam
           identificadas.
         </p>
-        <label htmlFor="published-from">Publicadas desde</label>
-        <input
-          className="input"
-          id="published-from"
-          type="date"
-          value={publishedFrom}
-          max={publishedTo || undefined}
-          onChange={(e) => setPublishedFrom(e.target.value)}
-        />
-        <label htmlFor="published-to">Publicadas até</label>
-        <input
-          className="input"
-          id="published-to"
-          type="date"
-          value={publishedTo}
-          min={publishedFrom || undefined}
-          onChange={(e) => setPublishedTo(e.target.value)}
-        />
+        <fieldset className="period-fields">
+          <legend>Período de publicação</legend>
+          <div className="field">
+            <label htmlFor="published-from">Publicadas desde</label>
+            <input
+              className="input"
+              id="published-from"
+              type="date"
+              value={publishedFrom}
+              max={publishedTo || undefined}
+              onChange={(e) => setPublishedFrom(e.target.value)}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="published-to">Publicadas até</label>
+            <input
+              className="input"
+              id="published-to"
+              type="date"
+              value={publishedTo}
+              min={publishedFrom || undefined}
+              onChange={(e) => setPublishedTo(e.target.value)}
+            />
+          </div>
+        </fieldset>
       </div>
       <MutationFeedback
         error={search.error}
@@ -145,7 +152,7 @@ export function Opportunities() {
           <div>
             <button
               type="submit"
-              className="btn bt-pri"
+              className="btn bt bt-pri"
               disabled={add.isPending || (!url.trim() && !text.trim())}
             >
               Adicionar à lista
@@ -155,7 +162,7 @@ export function Opportunities() {
         </form>
       )}
       <div className="note-card stack">
-        <label>
+        <label className="check-field">
           <input
             type="checkbox"
             checked={routine.data?.enabled ?? false}

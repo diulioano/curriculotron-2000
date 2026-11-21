@@ -57,6 +57,11 @@ interface SelectionJpaRepository extends JpaRepository<DailySelectionEntity, Dai
       @Param("criteriaVersion") long criteriaVersion,
       @Param("evaluatorVersion") int evaluatorVersion);
 
+  @Query(
+      "select d.id.localDate from DailySelectionEntity d "
+          + "where d.id.opportunityId = :opportunityId order by d.id.localDate")
+  List<String> selectedDates(@Param("opportunityId") String opportunityId);
+
   @Query("select o from OpportunityEntity o where o.id = :id")
   java.util.Optional<OpportunityEntity> findOpportunity(@Param("id") String id);
 }

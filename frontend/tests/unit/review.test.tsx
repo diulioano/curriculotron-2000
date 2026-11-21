@@ -31,6 +31,9 @@ const opportunity = {
   facts: ['Java obrigatório'],
   inferred: ['Angular pode ser desejável'],
   missing: ['Salário'],
+  seniority: { label: null, status: 'absent', reason: null },
+  corrections: [],
+  timeline: [],
   sources: [
     {
       source: 'SAP Careers',
@@ -91,6 +94,8 @@ it('separa fatos, inferências e informação ausente; abrir fonte não registra
     opportunity.sources[0].url,
   );
   expect(fetcher.mock.calls.every(([, init]) => init?.method === 'GET')).toBe(true);
+  await userEvent.click(screen.getByRole('button', { name: 'Corrigir algum dado →' }));
+  expect(screen.getByRole('form', { name: 'Corrigir dados da vaga' })).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: 'Me candidatei' }));
   expect(await screen.findByRole('status')).toHaveTextContent('Candidatura registrada');
   expect(fetcher).toHaveBeenCalledWith(
@@ -119,9 +124,9 @@ it('troca listas e permite recuperar uma vaga descartada', async () => {
 
 it('falha da API nunca aparece como lista vazia', async () => {
   mount('/vagas', true);
-  expect(await screen.findByText(/Esta área ainda não está disponível/)).toHaveAttribute(
-    'role',
-    'alert',
-  );
+  const errorText = await screen.findByText(/Esta área ainda não está disponível/);
+  const alert = errorText.closest('[role="alert"]');
+  expect(alert).not.toBeNull();
+  expect(alert).toHaveAttribute('data-surface-state', 'error');
   expect(screen.queryByText('Nenhuma vaga nesta lista.')).not.toBeInTheDocument();
 });

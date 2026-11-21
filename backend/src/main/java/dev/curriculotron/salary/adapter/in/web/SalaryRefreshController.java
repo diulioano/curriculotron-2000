@@ -1,5 +1,6 @@
 package dev.curriculotron.salary.adapter.in.web;
 
+import dev.curriculotron.opportunities.application.OpportunityNotFoundException;
 import dev.curriculotron.opportunities.application.OpportunityService;
 import dev.curriculotron.salary.application.SalaryEstimateService;
 import dev.curriculotron.salary.application.SalaryObservation;
@@ -9,7 +10,6 @@ import dev.curriculotron.shared.Ids;
 import dev.curriculotron.shared.web.ApiError;
 import dev.curriculotron.shared.web.ApiException;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -78,7 +78,7 @@ public class SalaryRefreshController {
     dev.curriculotron.opportunities.domain.Opportunity job;
     try {
       job = jobs.get(id);
-    } catch (NoSuchElementException e) {
+    } catch (OpportunityNotFoundException e) {
       throw ApiException.notFound("Vaga não encontrada.");
     }
     if (job.salary() != null)

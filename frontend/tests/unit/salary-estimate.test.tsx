@@ -29,8 +29,11 @@ const estimate: SalaryObservation = {
 };
 const job = { salary: null, salaryReference: { status: 'available', estimate } } as Opportunity;
 describe('Salary estimate', () => {
-  it('separates evidence and shows warnings', () => {
-    render(<SalaryEstimate item={job} detail />);
+  it('separates evidence and shows warnings as epistemic inference', () => {
+    const { container } = render(<SalaryEstimate item={job} detail />);
+    const inference = container.querySelector('.ep-inference.dsh');
+    expect(inference).not.toBeNull();
+    expect(inference).toHaveTextContent(/^~/);
     expect(screen.getByText(/Estimativa:/)).toHaveTextContent('6.000');
     expect(screen.getByText(/Poucos dados/)).toBeInTheDocument();
     expect(screen.getByText(/Referência antiga/)).toBeInTheDocument();
@@ -43,11 +46,13 @@ describe('Salary estimate', () => {
     );
     expect(container).toBeEmptyDOMElement();
   });
-  it('shows missing reference without a made-up number', () => {
-    render(<SalaryEstimate item={{ ...job, salaryReference: null }} />);
-    expect(screen.getByText('Sem referência de mercado')).toBeInTheDocument();
+  it('shows missing reference using hatched AbsentValue without a made-up number', () => {
+    const { container } = render(<SalaryEstimate item={{ ...job, salaryReference: null }} />);
+    const absent = screen.getByText('Sem referência de mercado');
+    expect(absent.closest('.ep-absent.hatch')).not.toBeNull();
+    expect(container.querySelector('.ep-inference')).toBeNull();
   });
-  it('does not convert hourly amounts', () => {
+  it('does not convert hourly amounts and marks as inference/absent', () => {
     render(
       <SalaryEstimate
         item={{

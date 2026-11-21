@@ -19,7 +19,7 @@ export function salaryText(item: Opportunity): string | null {
   return `${text}${UNITS[salary.unit]}`;
 }
 
-/** Cor decorativa; textos e foco mantêm a tinta escura do tema. */
+/** Identidade visual por empresa: 8 marcas conferidas e grafite neutro (#6B6B73) para as demais. */
 const BRANDS = new Map<string, string>([
   ['itaú', '#EC7000'],
   ['itau', '#EC7000'],
@@ -31,19 +31,11 @@ const BRANDS = new Map<string, string>([
   ['db', '#F70773'],
   ['ci&t', '#FA5A50'],
 ]);
-// Ordem e hash são estáveis entre sessões; colisões são permitidas.
-const COMPANY_PALETTE = ['#475569', '#7C3AED', '#0F766E', '#B45309', '#BE185D', '#0369A1'];
 export const GRAPHITE = '#6B6B73';
 export function companyColor(name: string): string {
   const key = name.trim().toLowerCase();
   if (!key) return GRAPHITE;
-  const brand = BRANDS.get(key);
-  if (brand) return brand;
-  let hash = 0;
-  for (let index = 0; index < key.length; index++) {
-    hash = (31 * hash + key.charCodeAt(index)) >>> 0;
-  }
-  return COMPANY_PALETTE[hash % COMPANY_PALETTE.length];
+  return BRANDS.get(key) ?? GRAPHITE;
 }
 /** "It" para Itaú, "S" para SAP: primeira palavra; siglas em maiúsculas ficam com uma letra. */
 export function companyInitials(name: string) {

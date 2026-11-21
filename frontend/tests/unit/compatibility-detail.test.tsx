@@ -75,6 +75,9 @@ function makeDetail(overrides: Partial<OpportunityDetail> = {}): OpportunityDeta
         fetchedAt: '2026-11-15T12:00:00Z',
       },
     ],
+    seniority: { label: 'Pleno', status: 'fact', reason: null },
+    corrections: [],
+    timeline: [],
     ...overrides,
   };
 }
@@ -174,6 +177,37 @@ describe('CompatibilityEvidence', () => {
       screen.getByText(new RegExp(xssPayload.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))),
     ).toBeVisible();
     expect(screen.getAllByText(/link indisponível/i)).toHaveLength(2);
+  });
+
+  it('identifica a evidência de título corrigido pela pessoa sem sugerir link indisponível', () => {
+    render(
+      <MemoryRouter>
+        <CompatibilityEvidence
+          item={makeDetail({
+            compatibilityEvidence: [
+              {
+                source: 'user_correction',
+                sourceUrl: null,
+                fetchedAt: '2026-11-16T09:30:00Z',
+                field: 'title',
+                section: null,
+                quote: 'Desenvolvedor Backend Java',
+                matchedCriterion: 'Desenvolvedor Backend Pleno Java',
+                observedTerm: null,
+                mentionKind: 'usage',
+                observedVersion: null,
+                configuredVersion: null,
+              },
+            ],
+          })}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('fonte: título corrigido por você')).toBeVisible();
+    expect(screen.queryByText(/link indisponível/i)).toBeNull();
+    expect(screen.queryByText(/user_correction/)).toBeNull();
+    expect(screen.getByText(/corrigido em/i)).toBeVisible();
   });
 
   it('mostra snapshot desatualizado explícito e descrição insuficiente para vaga parcial/unknown', () => {
