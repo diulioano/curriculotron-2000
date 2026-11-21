@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ApiError } from '../api/client';
+import { SurfaceStateBlock } from './SurfaceState';
 
 export function PageHeader({
   title,
@@ -20,6 +21,7 @@ export function PageHeader({
     </header>
   );
 }
+
 export function QueryState({
   pending,
   error,
@@ -29,28 +31,24 @@ export function QueryState({
   error: Error | null;
   retry: () => unknown;
 }) {
-  if (pending)
-    return (
-      <p className="empty mono" role="status">
-        Carregando…
-      </p>
-    );
+  if (pending) {
+    return <SurfaceStateBlock kind="loading" title="Carregando dados…" />;
+  }
   if (!error) return null;
+  const message =
+    error instanceof ApiError && error.status === 404
+      ? 'Esta área ainda não está disponível no serviço local.'
+      : error.message || 'Não foi possível carregar os dados.';
   return (
-    <div className="stack">
-      <div className="alert dsh" role="alert">
-        {error instanceof ApiError && error.status === 404
-          ? 'Esta área ainda não está disponível no serviço local.'
-          : error.message || 'Não foi possível carregar os dados.'}
-      </div>
-      <div>
-        <button className="btn bt-sec dsh" onClick={() => retry()}>
-          Tentar de novo
-        </button>
-      </div>
-    </div>
+    <SurfaceStateBlock
+      kind="error"
+      title="Não foi possível carregar"
+      body={message}
+      action={{ label: 'Tentar de novo', onClick: () => void retry() }}
+    />
   );
 }
+
 export function MutationFeedback({
   error,
   success,
@@ -73,6 +71,7 @@ export function MutationFeedback({
     </>
   );
 }
+
 export function Empty({ children }: { children: ReactNode }) {
-  return <div className="empty dsh">{children}</div>;
+  return <SurfaceStateBlock kind="empty" title={children} />;
 }
