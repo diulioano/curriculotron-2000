@@ -247,6 +247,7 @@
   .squiggle,
   .needs-you,
   .integration-alert,
+  .integration-alert-wrap,
   .home-section-head p:not(.home-consumption),
   .home-footnote {
     display: none;

@@ -2,9 +2,15 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { describeRefreshStatus } from '../api/compatibility';
 import { useCoordinatedHomeQuery } from '../api/useCompatibilityRefresh';
-import { type Application, type HomeData, type Integration } from '../api/panel';
+import {
+  type Application,
+  type HomeData,
+  type Integration,
+  type PendingReviewItem,
+} from '../api/panel';
 import { Empty, QueryState } from '../components/Panel';
 import { OpportunityCard, type CardLayout } from '../components/OpportunityCard';
+import { SurfaceStateBlock } from '../components/SurfaceState';
 import { companyColor } from '../lib/opportunity';
 import { APPLICATION_STATUSES } from '../lib/labels';
 import { formatAsOf, ZONE } from '../lib/time';
@@ -209,7 +215,7 @@ function Headline({ count }: { count: number }) {
 /** Versão curta do título no celular: "Hoje: 5 vagas, 3 pendências, 1 prazo." */
 function ShortHeadline({ data, now }: { data: HomeData; now: number }) {
   const count = data.selectionToday.count;
-  const pending = needsYouCount(data);
+  const pending = data.pendingReviewItems.length;
   const deadlines = upcomingDeadlines(data, now);
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   return (
@@ -281,8 +287,17 @@ function SystemStrip({ data }: { data: HomeData }) {
   );
 }
 
-function needsYouCount(data: HomeData) {
-  return data.reviewQueueCount + data.mailNeedingAttention.length + data.missedRoutines.length;
+function pendingActionLabel(kind: PendingReviewItem['kind']) {
+  switch (kind) {
+    case 'dedupe_candidate':
+      return 'Comparar anúncios →';
+    case 'email_attention':
+      return 'Ler e classificar →';
+    case 'missed_routine':
+      return 'Ver atividades →';
+    default:
+      return 'Abrir fila de revisão →';
+  }
 }
 
 function Stats({ data, now }: { data: HomeData; now: number }) {
@@ -297,7 +312,7 @@ function Stats({ data, now }: { data: HomeData; now: number }) {
         <span>vagas do dia</span>
       </li>
       <li className="stat sk">
-        <span className="stat-value">{needsYouCount(data)}</span>
+        <span className="stat-value">{data.pendingReviewItems.length}</span>
         <span>pedem você</span>
       </li>
       <li className={deadlines ? 'stat sk hl' : 'stat sk'}>
@@ -309,44 +324,24 @@ function Stats({ data, now }: { data: HomeData; now: number }) {
 }
 
 function NeedsYou({ data }: { data: HomeData }) {
-  const total = needsYouCount(data);
+  const items = data.pendingReviewItems;
+  const total = items.length;
   return (
     <section className="needs-you sk" aria-labelledby="precisa-de-voce">
       <h2 id="precisa-de-voce">
         Precisa de você <span className="count">({total})</span>
       </h2>
-      {data.reviewQueueCount > 0 && (
-        <div className="need-item dsh-b">
-          <span className="need-kind mono">FILA DE REVISÃO</span>
-          <strong>
-            {data.reviewQueueCount === 1
-              ? '1 item aguarda sua decisão'
-              : `${data.reviewQueueCount} itens aguardam sua decisão`}
-          </strong>
-          <span>Duplicatas e informações incertas que não resolvi sozinho.</span>
-          <Link to="/revisao">Abrir fila de revisão →</Link>
-        </div>
-      )}
-      {data.mailNeedingAttention.map((mail) => (
-        <div key={mail.id} className="need-item dsh-b">
-          <span className="need-kind mono">MENSAGEM · e-mail</span>
-          <strong>“{mail.subject}”</strong>
-          <Link to="/revisao">Ler e classificar →</Link>
-        </div>
+      {items.map((item) => (
+        <SurfaceStateBlock
+          key={item.id}
+          kind="pending_review"
+          subLabel={item.kindLabel}
+          title={item.title}
+          body={item.summary}
+          action={{ label: pendingActionLabel(item.kind), to: item.targetRoute }}
+        />
       ))}
-      {data.missedRoutines.length > 0 && (
-        <div className="need-item dsh-b">
-          <span className="need-kind mono">ROTINAS NÃO EXECUTADAS</span>
-          <strong>
-            {data.missedRoutines.length === 1
-              ? '1 rotina não rodou'
-              : `${data.missedRoutines.length} rotinas não rodaram`}
-          </strong>
-          <span>O computador pode ter ficado desligado.</span>
-          <Link to="/atividades">Ver atividades →</Link>
-        </div>
-      )}
-      {total === 0 && <p className="muted">Nada esperando por você agora.</p>}
+      {total === 0 && <SurfaceStateBlock kind="empty" title="Nada esperando por você agora." />}
     </section>
   );
 }
@@ -391,28 +386,30 @@ function NextActions({ items }: { items: Application[] }) {
 function IntegrationAlert({ item }: { item: Integration }) {
   const name = integrationName(item.id);
   return (
-    <section className="integration-alert dsh" aria-labelledby={`alerta-${item.id}`}>
-      <h2 id={`alerta-${item.id}`}>
-        {name} {item.state === 'disconnected' ? 'desconectado' : 'com falhas'}
-      </h2>
-      <p>
-        {item.detail && (
+    <div className="integration-alert-wrap">
+      <SurfaceStateBlock
+        kind={item.state === 'disconnected' ? 'error' : 'partial'}
+        titleAs="h2"
+        title={`${name} ${item.state === 'disconnected' ? 'desconectado' : 'com falhas'}`}
+        body={
           <>
-            <strong>O que aconteceu:</strong> {item.detail}
-            <br />
+            {item.detail && (
+              <>
+                <strong>O que aconteceu:</strong> {item.detail}
+                <br />
+              </>
+            )}
+            <strong>Último sucesso:</strong>{' '}
+            {item.lastSuccessAt ? (
+              <time dateTime={item.lastSuccessAt}>{formatAsOf(item.lastSuccessAt)}</time>
+            ) : (
+              'nenhum ainda'
+            )}
+            .
           </>
-        )}
-        <strong>Último sucesso:</strong>{' '}
-        {item.lastSuccessAt ? (
-          <time dateTime={item.lastSuccessAt}>{formatAsOf(item.lastSuccessAt)}</time>
-        ) : (
-          'nenhum ainda'
-        )}
-        .
-      </p>
-      <Link className="btn bt bt-sec dsh" to="/integracoes">
-        Resolver em Integrações
-      </Link>
-    </section>
+        }
+        action={{ label: 'Resolver em Integrações', to: '/integracoes' }}
+      />
+    </div>
   );
 }
