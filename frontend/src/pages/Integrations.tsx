@@ -1,9 +1,11 @@
-﻿import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { panel, post, type ListResult, type TaskRun } from '../api/panel';
-import { api } from '../api/client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchTaskRuns } from '../api/compatibility';
+import { panel, post } from '../api/panel';
 import { StatusBadge } from '../components/StatusBadge';
 import { DataAsOf } from '../components/DataAsOf';
+import { AbsentValue } from '../components/Epistemic';
 import { Empty, MutationFeedback, PageHeader, QueryState } from '../components/Panel';
+import { SurfaceStateBlock } from '../components/SurfaceState';
 import { PAUSE_REASONS } from '../lib/labels';
 
 export function Integrations() {
@@ -11,7 +13,7 @@ export function Integrations() {
   const home = useQuery({ queryKey: ['home'], queryFn: ({ signal }) => panel.home(signal) });
   const tasks = useQuery({
     queryKey: ['task-runs'],
-    queryFn: ({ signal }) => api<ListResult<TaskRun>>('/api/task-runs', { signal }),
+    queryFn: ({ signal }) => fetchTaskRuns(signal),
   });
   const resume = useMutation({
     mutationFn: (id: string) => post(`/api/task-runs/${encodeURIComponent(id)}/resume`),
@@ -33,7 +35,26 @@ export function Integrations() {
               <h2>{item.id}</h2>
               <StatusBadge state={item.state} />
             </div>
-            <p>{item.detail || 'Nenhum detalhe adicional.'}</p>
+            {item.state === 'disconnected' && (
+              <SurfaceStateBlock
+                kind="error"
+                title="Integração desconectada"
+                body={item.detail || 'Autorização ausente ou expirada.'}
+              />
+            )}
+            {item.state === 'degraded' && (
+              <SurfaceStateBlock
+                kind="partial"
+                title="Integração com falhas parciais"
+                body={item.detail || 'Parte das consultas não respondeu.'}
+              />
+            )}
+            {(item.state === 'ok' || item.state === 'paused') &&
+              (item.detail ? (
+                <p>{item.detail}</p>
+              ) : (
+                <AbsentValue>Nenhum detalhe adicional.</AbsentValue>
+              ))}
             <div>
               <p className="meta">Último sucesso</p>
               <DataAsOf at={item.lastSuccessAt} />
@@ -54,22 +75,39 @@ export function Integrations() {
       />
       {tasks.data?.items
         .filter((item) => item.state === 'paused')
-        .map((item) => (
-          <article className="note-card dsh stack" key={item.id}>
-            <h3>{PAUSE_REASONS[item.pauseReason ?? ''] ?? 'Tarefa pausada'}</h3>
-            <p className="meta">Referência: {item.id}</p>
-            <p>{item.errorSummary}</p>
-            <div>
-              <button
-                className="btn bt-sec dsh"
-                disabled={resume.isPending}
-                onClick={() => resume.mutate(item.id)}
-              >
-                Retomar tarefa
-              </button>
-            </div>
-          </article>
-        ))}
+        .map((item) => {
+          const consulted = item.sourcesConsulted ?? [];
+          const failed = item.sourcesFailed ?? [];
+          const total = consulted.length + failed.length;
+          return (
+            <SurfaceStateBlock
+              key={item.id}
+              kind={failed.length > 0 ? 'partial' : 'pending_review'}
+              title={PAUSE_REASONS[item.pauseReason ?? ''] ?? 'Tarefa pausada'}
+              body={
+                <>
+                  {total > 0 && (
+                    <p className="small">
+                      {consulted.length} de {total} fontes consultadas
+                      {failed.length > 0 ? ` · com falha: ${failed.join(', ')}` : ''}.
+                    </p>
+                  )}
+                  <p className="meta">Referência: {item.id}</p>
+                  {item.errorSummary ? (
+                    <p>{item.errorSummary}</p>
+                  ) : (
+                    <AbsentValue>Nenhum detalhe adicional.</AbsentValue>
+                  )}
+                </>
+              }
+              action={{
+                label: 'Retomar tarefa',
+                disabled: resume.isPending,
+                onClick: () => resume.mutate(item.id),
+              }}
+            />
+          );
+        })}
       {tasks.data && !tasks.data.items.some((item) => item.state === 'paused') && (
         <Empty>Nenhuma tarefa pausada.</Empty>
       )}
