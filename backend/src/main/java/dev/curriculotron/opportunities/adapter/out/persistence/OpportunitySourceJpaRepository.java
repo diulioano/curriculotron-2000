@@ -11,6 +11,8 @@ interface OpportunitySourceJpaRepository extends JpaRepository<OpportunitySource
 
   List<OpportunitySourceEntity> findByOpportunityIdOrderByFetchedAtAscIdAsc(String opportunityId);
 
+  List<OpportunitySourceEntity> findByOpportunityIdOrderByCreatedAtAscIdAsc(String opportunityId);
+
   boolean existsByCanonicalUrl(String canonicalUrl);
 
   boolean existsBySourceAndExternalId(String source, String externalId);

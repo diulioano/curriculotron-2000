@@ -29,6 +29,13 @@ class ActivityLogPersistenceAdapter implements ActivityLogRepository {
   }
 
   @Override
+  public List<ActivityRecord> forTarget(String targetType, String targetId) {
+    return jpa.findByTargetTypeAndTargetIdOrderByAtAscIdAsc(targetType, targetId).stream()
+        .map(ActivityLogEntity::toDomain)
+        .toList();
+  }
+
+  @Override
   public List<ActivityRecord> forTaskRun(String taskRunId) {
     return jpa.findByTaskRunIdOrderByAtAscIdAsc(taskRunId).stream()
         .map(ActivityLogEntity::toDomain)

@@ -34,6 +34,11 @@ class SelectionPersistenceAdapter implements SelectionRepository {
   }
 
   @Override
+  public List<LocalDate> selectedDays(String opportunityId) {
+    return selections.selectedDates(opportunityId).stream().map(LocalDate::parse).toList();
+  }
+
+  @Override
   public void select(LocalDate date, String id, int rank) {
     var opportunity = selections.findOpportunity(id).orElseThrow();
     selections.save(new DailySelectionEntity(date.toString(), id, rank, opportunity.fitReasons()));

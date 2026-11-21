@@ -13,4 +13,7 @@ interface ActivityLogJpaRepository extends Repository<ActivityLogEntity, String>
   List<ActivityLogEntity> findByAtGreaterThanEqualOrderByAtDescIdDesc(Instant since, Limit limit);
 
   List<ActivityLogEntity> findByTaskRunIdOrderByAtAscIdAsc(String taskRunId);
+
+  List<ActivityLogEntity> findByTargetTypeAndTargetIdOrderByAtAscIdAsc(
+      String targetType, String targetId);
 }
