@@ -30,8 +30,23 @@ function containsWholeTerm(text: string, term: string): boolean {
   return pattern.test(text);
 }
 
+function isVersionToken(token: string): boolean {
+  const core = token.endsWith('+') ? token.slice(0, -1) : token;
+  if (core.length === 0) return false;
+  return core.split('.').every((part) => /^\d+$/.test(part));
+}
+
 function withoutVersion(term: string): string {
-  return term.replace(/\s+\d+(\.\d+)*\+?$/, '').trim();
+  for (let i = term.length - 1; i >= 0; i -= 1) {
+    if (term[i].trim() === '') {
+      const suffix = term.slice(i + 1);
+      if (isVersionToken(suffix)) {
+        return term.slice(0, i).trim();
+      }
+      break;
+    }
+  }
+  return term.trim();
 }
 
 function profileTerms(

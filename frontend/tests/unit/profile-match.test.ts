@@ -33,8 +33,16 @@ describe('profileMatchFor', () => {
   it('reconhece o termo inteiro, sem acento/caixa e ignorando sufixo de versão', () => {
     expect(profileMatchFor('Java 17 obrigatório', criteria(['java']))).toBe('matched');
     expect(profileMatchFor('Java', criteria(['Java 21']))).toBe('matched');
+    expect(profileMatchFor('Python', criteria(['Python 3.12']))).toBe('matched');
+    expect(profileMatchFor('Java', criteria(['Java 17+']))).toBe('matched');
     expect(profileMatchFor('C#', criteria(['C#']))).toBe('matched');
     expect(profileMatchFor('Experiência com Go e Kafka', criteria(['Go']))).toBe('matched');
+  });
+
+  it('não remove texto não numérico nem versão malformada como sufixo', () => {
+    expect(profileMatchFor('Java', criteria(['Java 17 LTS']))).toBe('missing_from_profile');
+    expect(profileMatchFor('Java', criteria(['Java 17.']))).toBe('missing_from_profile');
+    expect(profileMatchFor('Java', criteria(['Java 17++']))).toBe('missing_from_profile');
   });
 
   it('não casa palavra curta dentro de outra palavra', () => {
