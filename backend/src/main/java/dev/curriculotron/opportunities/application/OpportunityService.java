@@ -55,8 +55,7 @@ public class OpportunityService {
   }
 
   public Opportunity get(String id) {
-    return jobs.find(id)
-        .orElseThrow(() -> new java.util.NoSuchElementException("Vaga não encontrada"));
+    return jobs.find(id).orElseThrow(() -> new OpportunityNotFoundException(id));
   }
 
   @Transactional(readOnly = true)
@@ -89,6 +88,19 @@ public class OpportunityService {
       status.recordSuccess("source:manual", "Entrada manual; detalhes não verificados.");
     });
     return get(id);
+  }
+
+  /**
+   * Registra, a pedido da pessoa, que ela abriu o anúncio original. É apenas informativo: não
+   * altera a vaga, a decisão da pessoa nem cria candidatura (Princípio VII).
+   *
+   * @throws OpportunityNotFoundException se a vaga não existe
+   */
+  public void recordExternalVisit(String id) {
+    writer.run(() -> {
+      get(id);
+      activity.record(ActivityEntry.user("opportunity.external_opened", "opportunity", id));
+    });
   }
 
   public void decide(String id, String decision) {

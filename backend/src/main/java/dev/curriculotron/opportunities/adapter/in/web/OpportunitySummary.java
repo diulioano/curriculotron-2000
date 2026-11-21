@@ -1,6 +1,7 @@
 package dev.curriculotron.opportunities.adapter.in.web;
 
 import dev.curriculotron.opportunities.application.port.out.OpportunitySourceRepository.Source;
+import dev.curriculotron.opportunities.domain.CorrectableOpportunityField;
 import dev.curriculotron.opportunities.domain.Opportunity;
 import dev.curriculotron.salary.application.SalaryReference;
 import java.util.List;
@@ -23,9 +24,11 @@ public record OpportunitySummary(
     String companyTier,
     SalaryReference salaryReference,
     String glassdoorUrl,
-    CompatibilitySummary compatibility) {
+    CompatibilitySummary compatibility,
+    List<CorrectableOpportunityField> correctedFields) {
   public OpportunitySummary {
     fitReasons = List.copyOf(fitReasons);
+    correctedFields = List.copyOf(correctedFields);
     Objects.requireNonNull(compatibility);
   }
 }
