@@ -5,6 +5,7 @@ import { describeCompatibility } from '../api/compatibility';
 import { post, type Opportunity } from '../api/panel';
 import { companyColor, companyInitials, salaryText } from '../lib/opportunity';
 import { formatAsOf, ZONE } from '../lib/time';
+import { AbsentValue, FactItem, InferenceBox } from './Epistemic';
 import { MutationFeedback } from './Panel';
 import { SalaryEstimate } from './SalaryEstimate';
 
@@ -14,17 +15,70 @@ const MODES = {
   onsite: 'Presencial',
   unknown: 'Modalidade a confirmar',
 };
+
+type FieldName = NonNullable<Opportunity['correctedFields']>[number];
+
+function corrected(item: Opportunity, ...fields: FieldName[]) {
+  return fields.some((field) => item.correctedFields?.includes(field));
+}
+
+function correctionLabel(item: Opportunity, ...fields: FieldName[]) {
+  return corrected(item, ...fields) ? (
+    <span className="ep-corrected-by"> corrigido por você</span>
+  ) : null;
+}
+
+export function OpportunityHeading({ item }: { item: Opportunity }) {
+  return (
+    <>
+      <p className="eyebrow">
+        {item.companyName}
+        {correctionLabel(item, 'company_name')}
+      </p>
+      <h2>
+        <Link to={`/vagas/${item.id}`}>{item.title}</Link>
+        {correctionLabel(item, 'title')}
+      </h2>
+    </>
+  );
+}
+function SummarySalary({ item, compact = false }: { item: Opportunity; compact?: boolean }) {
+  const salary = salaryText(item);
+  const fields = ['salary_min', 'salary_max', 'salary_unit'] as const;
+  return (
+    <p className={compact ? 'salary' : salary ? 'job-salary mono' : 'job-salary-missing mono'}>
+      {salary ? (
+        <FactItem bold value={salary} sourceDeclared={!corrected(item, ...fields)} />
+      ) : (
+        <AbsentValue>{compact ? 'Salário a confirmar' : 'salário a confirmar'}</AbsentValue>
+      )}
+      {correctionLabel(item, ...fields)}
+    </p>
+  );
+}
+
 export function OpportunityMeta({ item }: { item: Opportunity }) {
   return (
     <>
       <p className="meta">
-        {MODES[item.workMode]} · {item.location || 'Local a confirmar'} ·{' '}
+        {MODES[item.workMode]}
+        {correctionLabel(item, 'work_mode')} · {item.location || 'Local a confirmar'}
+        {correctionLabel(item, 'location')} ·{' '}
         {item.contractType === 'unknown' ? 'Contrato a confirmar' : item.contractType.toUpperCase()}
+        {correctionLabel(item, 'contract_type')}
       </p>
       <p className="muted">
-        {item.publishedAt ? `Publicada em ${item.publishedAt}` : 'Data de publicação desconhecida'}
+        {item.publishedAt ? (
+          <FactItem
+            value={`Publicada em ${item.publishedAt}`}
+            sourceDeclared={!corrected(item, 'published_at')}
+          />
+        ) : (
+          <AbsentValue>Data de publicação desconhecida</AbsentValue>
+        )}
+        {correctionLabel(item, 'published_at')}
       </p>
-      <p className="salary">{salaryText(item) ?? 'Salário a confirmar'}</p>
+      <SummarySalary item={item} compact />
     </>
   );
 }
@@ -77,19 +131,13 @@ export function OpportunityCard({
   });
   const Heading = headingLevel === 3 ? 'h3' : 'h2';
   const color = companyColor(item.companyName);
-  const salary = salaryText(item);
-  const place = [
-    item.location,
-    item.workMode === 'unknown' ? null : MODES[item.workMode].toLowerCase(),
-  ]
-    .filter(Boolean)
-    .join(' · ');
   const compatibility = item.compatibility ? describeCompatibility(item.compatibility) : null;
   const style = {
     '--c': color,
     flex: layout?.flex,
     transform: layout?.rotate ? `rotate(${layout.rotate}deg)` : undefined,
   } as CSSProperties;
+  const companyTrimmed = item.companyName.trim();
   return (
     <article className="job-card sk" style={style}>
       <div className="card-top">
@@ -97,7 +145,10 @@ export function OpportunityCard({
           <span>{companyInitials(item.companyName)}</span>
         </span>
         <span className="company-id">
-          <span className="company-name">{item.companyName.trim() || 'Empresa não informada'}</span>
+          <span className="company-name">
+            {companyTrimmed ? companyTrimmed : <AbsentValue>Empresa não informada</AbsentValue>}
+            {correctionLabel(item, 'company_name')}
+          </span>
           {item.companyTier && <span className="company-tier mono">{TIERS[item.companyTier]}</span>}
         </span>
       </div>
@@ -106,6 +157,7 @@ export function OpportunityCard({
         style={layout?.titleSize ? { fontSize: layout.titleSize } : undefined}
       >
         <Link to={`/vagas/${item.id}`}>{item.title}</Link>
+        {correctionLabel(item, 'title')}
       </Heading>
       {compatibility && (
         <p className={`job-compatibility mono compatibility-${compatibility.tone}`}>
@@ -113,26 +165,67 @@ export function OpportunityCard({
         </p>
       )}
       <p className="job-place">
-        {place || 'Local a confirmar'}
-        {item.contractType !== 'unknown' && ` · ${item.contractType.toUpperCase()}`}
+        {item.location ? (
+          <FactItem value={item.location} sourceDeclared={!corrected(item, 'location')} />
+        ) : (
+          <AbsentValue>Local a confirmar</AbsentValue>
+        )}
+        {correctionLabel(item, 'location')}
+        {item.workMode !== 'unknown' && (
+          <>
+            {' · '}
+            <FactItem
+              value={MODES[item.workMode].toLowerCase()}
+              sourceDeclared={!corrected(item, 'work_mode')}
+            />
+          </>
+        )}
+        {correctionLabel(item, 'work_mode')}
+        {item.contractType !== 'unknown' && (
+          <>
+            {' · '}
+            <FactItem
+              value={item.contractType.toUpperCase()}
+              sourceDeclared={!corrected(item, 'contract_type')}
+            />
+          </>
+        )}
+        {correctionLabel(item, 'contract_type')}
       </p>
-      {salary ? (
-        <p className="job-salary mono">
-          ✓ {salary} <span className="muted">declarado</span>
-        </p>
-      ) : (
-        <p className="job-salary-missing hatch mono">
-          <span>salário a confirmar</span>
+      <SummarySalary item={item} />
+      <SalaryEstimate item={item} />
+      {(corrected(item, 'availability') || corrected(item, 'deadline_at')) && (
+        <p className="job-source mono">
+          {corrected(item, 'availability') && (
+            <>
+              Disponibilidade:{' '}
+              {item.availability === 'open'
+                ? 'aberta'
+                : item.availability === 'closed'
+                  ? 'encerrada'
+                  : 'a confirmar'}{' '}
+              {correctionLabel(item, 'availability')}
+            </>
+          )}
+          {corrected(item, 'deadline_at') && (
+            <>
+              Prazo: {item.deadlineAt || 'não informado'} {correctionLabel(item, 'deadline_at')}
+            </>
+          )}
         </p>
       )}
-      <SalaryEstimate item={item} />
       {item.glassdoorUrl && (
         <a href={item.glassdoorUrl} target="_blank" rel="noopener noreferrer" className="small">
           Ver no Glassdoor ↗
         </a>
       )}
       {item.fitReasons.length > 0 && Boolean(item.compatibility?.current) && (
-        <p className="job-reason">“{item.fitReasons[0]}”</p>
+        <InferenceBox
+          inline
+          className="job-reason"
+          value={`“${item.fitReasons[0]}”`}
+          reason={null}
+        />
       )}
       {item.deadlineAt && (
         <p className="job-deadline hl">
@@ -140,9 +233,14 @@ export function OpportunityCard({
           {deadlineText(item.deadlineAt)}
         </p>
       )}
-      <p className="job-source mono">
-        {item.publishedAt ? `Publicada em ${item.publishedAt}` : 'Data de publicação desconhecida'}
-      </p>
+      <div className="job-source mono">
+        {item.publishedAt ? (
+          <span>publicada: {item.publishedAt}</span>
+        ) : (
+          <AbsentValue>Data de publicação desconhecida</AbsentValue>
+        )}
+        {correctionLabel(item, 'published_at')}
+      </div>
       {item.source && (
         <p className="job-source mono">
           fonte: {item.source.source} · consultado{' '}
