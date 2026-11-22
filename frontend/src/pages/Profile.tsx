@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router';
 import { ApiError, api } from '../api/client';
 import {
@@ -14,31 +14,24 @@ import {
   useCoordinatedCriteriaQuery,
   useReassessMutation,
   useSaveCriteriaMutation,
+  PROFILE_KEY,
 } from '../api/useCompatibilityRefresh';
+import {
+  getProfile,
+  previewProfileImport,
+  SENIORITY_LABELS,
+  type CareerProfile,
+  type DraftField,
+  type ProfileView,
+} from '../api/profile';
+import { FieldOrigin, ProfileEditor } from '../components/ProfileEditor';
+import { manualSession, toForm, type EditorSession } from '../lib/profile-form';
+import { formatAsOf } from '../lib/time';
 import { post, type ListResult } from '../api/panel';
 import { Empty, MutationFeedback, PageHeader, QueryState } from '../components/Panel';
 
-type Fact = {
-  id: string;
-  kind: string;
-  statement: string;
-  origin: 'documented' | 'declared' | 'study_recommended';
-  originRef: string;
-};
-type ProfileData = { id: string; status: 'imported' | 'reviewed'; facts: Fact[] };
 type Company = { id: string; name: string; tier: 'priority' | 'suggested'; notes: string };
-const ORIGINS = {
-  documented: 'Documentado no currículo',
-  declared: 'Declarado por você',
-  study_recommended: 'Recomendação de estudo',
-};
-const KINDS: Record<string, string> = {
-  experience: 'Experiência',
-  skill: 'Competência',
-  education: 'Formação',
-  language: 'Idioma',
-  preference: 'Preferência',
-};
+
 function ProfileNav() {
   return (
     <nav className="tabs dsh-b" aria-label="Configurações do perfil">
@@ -55,114 +48,278 @@ function ProfileNav() {
     </nav>
   );
 }
-function ProfileForm({ data }: { data: ProfileData }) {
-  const client = useQueryClient();
-  const [facts, setFacts] = useState(data.facts);
-  const save = useMutation({
-    mutationFn: () =>
-      api('/api/profile', { method: 'PUT', body: { id: data.id, status: 'reviewed', facts } }),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['profile'] });
-    },
-  });
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    save.mutate();
-  }
+const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const ORIGIN_LABELS = { markdown: 'Importado de Markdown e revisado', manual: 'Entrada manual' };
+
+function ListValue({ items, empty }: { items: string[]; empty: string }) {
+  return items.length ? <span>{items.join(', ')}</span> : <span className="muted">{empty}</span>;
+}
+
+function floorSummary(value: number | null, regime: string): string {
+  return value === null
+    ? `Não definido — Júnior ${regime} não entra pela exceção`
+    : `${BRL.format(value)}/mês`;
+}
+
+function ProfileSummary({ profile }: { profile: CareerProfile }) {
+  const rows: [DraftField, string, ReactNode][] = [
+    ['role', 'Cargo desejado', profile.role],
+    ['primaryTechnology', 'Tecnologia principal', profile.primaryTechnology],
+    [
+      'secondaryTechnologies',
+      'Tecnologias secundárias',
+      <ListValue items={profile.secondaryTechnologies} empty="Nenhuma" />,
+    ],
+    [
+      'flexibleTechnologies',
+      'Preferências flexíveis',
+      <ListValue items={profile.flexibleTechnologies} empty="Nenhuma" />,
+    ],
+    ['currentSeniority', 'Senioridade atual', SENIORITY_LABELS[profile.currentSeniority]],
+    [
+      'targetLevels',
+      'Níveis desejados',
+      profile.targetLevels.map((l) => SENIORITY_LABELS[l]).join(', '),
+    ],
+    [
+      'priorities',
+      'Empresas prioritárias',
+      <ListValue items={profile.priorities} empty="Nenhuma" />,
+    ],
+    [
+      'juniorFloorCltMonthlyBrl',
+      'Piso Júnior CLT',
+      floorSummary(profile.juniorFloorCltMonthlyBrl, 'CLT'),
+    ],
+    [
+      'juniorFloorPjMonthlyBrl',
+      'Piso Júnior PJ',
+      floorSummary(profile.juniorFloorPjMonthlyBrl, 'PJ'),
+    ],
+  ];
   return (
-    <form className="stack" onSubmit={submit}>
-      {facts.map((fact, i) => (
-        <section className="note-card dsh stack" key={fact.id}>
-          <div className="section-heading">
-            <strong>{KINDS[fact.kind] ?? fact.kind}</strong>
-            <span className="meta">{ORIGINS[fact.origin]}</span>
-          </div>
-          {fact.origin === 'declared' ? (
-            <div className="field">
-              <label htmlFor={`fact-${fact.id}`}>Informação profissional</label>
-              <textarea
-                className="input"
-                id={`fact-${fact.id}`}
-                required
-                value={fact.statement}
-                onChange={(e) =>
-                  setFacts(facts.map((f, j) => (j === i ? { ...f, statement: e.target.value } : f)))
-                }
-              />
+    <section className="note-card dsh stack" aria-label="Perfil salvo">
+      <div className="section-heading">
+        <strong>Perfil v{profile.version}</strong>
+        <span className="meta">
+          {ORIGIN_LABELS[profile.origin]} · atualizado em {formatAsOf(profile.updatedAt)}
+        </span>
+      </div>
+      <dl className="profile-summary">
+        {rows.map(([field, label, value]) => {
+          const origin = profile.provenance[field];
+          return (
+            <div key={field}>
+              <dt className="meta">{label}</dt>
+              <dd>{value}</dd>
+              {origin && (
+                <dd className="stack compact">
+                  <FieldOrigin provenance={origin} />
+                </dd>
+              )}
             </div>
-          ) : (
-            <p>{fact.statement}</p>
-          )}
-          <p className="meta">Origem: {fact.originRef || 'Sem referência registrada'}</p>
-          {fact.origin === 'study_recommended' && (
-            <p className="meta">Esta recomendação não é usada como comprovação de competência.</p>
-          )}
-        </section>
-      ))}
+          );
+        })}
+      </dl>
+    </section>
+  );
+}
+
+function MarkdownImport({
+  onDraft,
+  onManual,
+}: {
+  onDraft: (session: EditorSession) => void;
+  onManual: () => void;
+}) {
+  const [markdown, setMarkdown] = useState('');
+  const [fileError, setFileError] = useState<string | null>(null);
+  const preview = useMutation({
+    mutationFn: previewProfileImport,
+    onSuccess: ({ draft, warnings, provenance }) =>
+      onDraft({ origin: 'markdown', initial: toForm(draft), warnings, provenance, imported: true }),
+  });
+  const failure = fileError ?? preview.error?.message;
+  return (
+    <form
+      className="note-card dsh stack"
+      aria-label="Importar currículo Markdown"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (markdown.trim()) preview.mutate(markdown);
+      }}
+    >
+      <h2>Importar currículo em Markdown</h2>
+      <p className="muted">
+        O conteúdo vira um rascunho para você revisar. Nada é salvo antes da sua confirmação.
+      </p>
+      <div className="field">
+        <label htmlFor="profile-markdown-file">Arquivo .md</label>
+        <input
+          id="profile-markdown-file"
+          type="file"
+          accept=".md,.markdown,text/markdown,text/plain"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            setFileError(null);
+            if (!file) return;
+            file.text().then(setMarkdown, () => setFileError('Não foi possível ler o arquivo.'));
+          }}
+        />
+      </div>
+      <div className="field">
+        <label htmlFor="profile-markdown">Ou cole o Markdown</label>
+        <textarea
+          className="input"
+          id="profile-markdown"
+          rows={8}
+          value={markdown}
+          onChange={(e) => setMarkdown(e.target.value)}
+        />
+      </div>
+      {failure && (
+        <p className="alert dsh" role="alert">
+          {failure} Você pode preencher o perfil manualmente; ele é salvo no mesmo formato.
+        </p>
+      )}
       <div className="actions">
-        <button
-          type="button"
-          className="btn bt bt-sec dsh"
-          onClick={() =>
-            setFacts([
-              ...facts,
-              {
-                id: crypto.randomUUID(),
-                kind: 'skill',
-                statement: '',
-                origin: 'declared',
-                originRef: 'Declaração no painel',
-              },
-            ])
-          }
-        >
-          + Adicionar informação declarada
-        </button>
         <button
           type="submit"
           className="btn bt bt-pri"
-          disabled={save.isPending || facts.some((f) => !f.statement.trim())}
+          disabled={preview.isPending || !markdown.trim()}
         >
-          Salvar e marcar como revisado
+          {preview.isPending ? 'Lendo…' : 'Ler e revisar'}
+        </button>
+        <button type="button" className="btn bt bt-sec dsh" onClick={onManual}>
+          Preencher manualmente
         </button>
       </div>
-      <MutationFeedback error={save.error} success={save.isSuccess && 'Perfil revisado e salvo.'} />
     </form>
   );
 }
+
 export function Profile() {
-  const client = useQueryClient();
   const query = useQuery({
-    queryKey: ['profile'],
-    queryFn: ({ signal }) => api<ProfileData>('/api/profile', { signal }),
+    queryKey: PROFILE_KEY,
+    queryFn: ({ signal }) => getProfile(signal),
   });
-  const reimport = useMutation({
-    mutationFn: () => post('/api/profile/import'),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['profile'] });
-    },
+  const [session, setSession] = useState<(EditorSession & { version: number }) | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [saved, setSaved] = useState<ProfileView | null>(null);
+  const profile = query.data?.profile ?? null;
+  const refresh = useReassessMutation({
+    onSuccess: (result) =>
+      setSaved(
+        (view) =>
+          view && {
+            ...view,
+            assessment: { ...view.assessment, ...result, stale: result.state !== 'ready' },
+          },
+      ),
   });
+
+  function start(next: EditorSession) {
+    setSaved(null);
+    setImporting(false);
+    const suggested = query.data?.priorityCompanies ?? [];
+    const prefilled =
+      !profile && !next.initial.priorities && suggested.length > 0
+        ? { priorities: suggested.join('\n') }
+        : undefined;
+    setSession({ ...next, prefilled, version: profile?.version ?? 0 });
+  }
+
   return (
     <div className="stack">
       <PageHeader title="Seu perfil" eyebrow="A busca começa pelo que você sabe">
-        <button
-          className="btn bt bt-sec dsh"
-          disabled={reimport.isPending}
-          onClick={() => reimport.mutate()}
-        >
-          Reimportar currículo
-        </button>
+        {profile && !session && (
+          <>
+            <button
+              className="btn bt bt-sec dsh"
+              onClick={() => {
+                setSaved(null);
+                setImporting(!importing);
+              }}
+              aria-expanded={importing}
+            >
+              Importar Markdown
+            </button>
+            <button
+              className="btn bt bt-pri"
+              onClick={() =>
+                start({
+                  origin: profile.origin,
+                  initial: toForm(profile),
+                  warnings: [],
+                  provenance: profile.provenance,
+                  imported: false,
+                })
+              }
+            >
+              Editar perfil
+            </button>
+          </>
+        )}
       </PageHeader>
       <ProfileNav />
       <p className="muted">
-        Fatos do currículo, declarações e recomendações de estudo mantêm suas origens separadas.
+        Cargo, tecnologias e níveis orientam a busca e o ranking. Cada pessoa define os próprios
+        critérios.
       </p>
-      <MutationFeedback
-        error={reimport.error}
-        success={reimport.isSuccess && 'Currículo reimportado.'}
-      />
       <QueryState pending={query.isPending} error={query.error} retry={query.refetch} />
-      {query.data && <ProfileForm key={JSON.stringify(query.data.facts)} data={query.data} />}
+      {saved && (
+        <div className="notice dsh" role="status">
+          <p>✓ Perfil salvo (v{saved.profile?.version}).</p>
+          <p>{describeProfileAssessmentStatus(saved.assessment)}</p>
+          {refresh.isPending && <p>Reavaliando as vagas com o perfil salvo…</p>}
+          {refresh.error && <p role="alert">{refresh.error.message}</p>}
+          <NavLink to="/vagas?list=recommended">Ver vagas para seu perfil</NavLink>
+          {' · '}
+          <NavLink to="/criterios">Acompanhar a avaliação nos critérios →</NavLink>
+        </div>
+      )}
+      {query.data &&
+        (session ? (
+          <ProfileEditor
+            session={session}
+            key={session.version}
+            version={session.version}
+            onSaved={(view) => {
+              setSession(null);
+              setSaved(view);
+              if (view.assessment.state === 'pending')
+                refresh.mutate(view.assessment.criteriaVersion);
+            }}
+            onCancel={() => setSession(null)}
+            onReload={async () => {
+              const result = await query.refetch();
+              const current = result.data?.profile;
+              if (result.isError || !current)
+                throw new Error('Não foi possível recarregar o perfil.');
+              setSession({
+                origin: current.origin,
+                initial: toForm(current),
+                warnings: [],
+                provenance: current.provenance,
+                imported: false,
+                version: current.version,
+              });
+            }}
+          />
+        ) : (
+          <>
+            {(!profile || importing) && (
+              <MarkdownImport onDraft={start} onManual={() => start(manualSession())} />
+            )}
+            {profile ? (
+              <ProfileSummary profile={profile} />
+            ) : (
+              <Empty>
+                Nenhum perfil salvo ainda. Importe um currículo ou preencha manualmente.
+              </Empty>
+            )}
+          </>
+        ))}
     </div>
   );
 }

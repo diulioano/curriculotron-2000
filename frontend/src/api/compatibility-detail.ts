@@ -11,6 +11,7 @@ import type {
   SeniorityAssessment,
   TimelineEventKind,
 } from './panel';
+import { parsePreparation, type Preparation } from './profile';
 
 export const EVIDENCE_FIELDS = ['title', 'description'] as const;
 export type EvidenceField = (typeof EVIDENCE_FIELDS)[number];
@@ -58,6 +59,57 @@ export interface CompatibilityCriteriaSnapshot {
   stackKeywords: string[];
 }
 
+export const JUNIOR_EXCEPTION_STATUSES = [
+  'qualified',
+  'excluded',
+  'not_applicable',
+  'unknown',
+] as const;
+export type JuniorExceptionStatus = (typeof JUNIOR_EXCEPTION_STATUSES)[number];
+
+export const JUNIOR_SALARY_STATUSES = [
+  'confirmed',
+  'range_crosses_floor',
+  'below_floor',
+  'not_announced',
+  'contract_unknown',
+  'floor_missing',
+] as const;
+export type JuniorSalaryStatus = (typeof JUNIOR_SALARY_STATUSES)[number];
+
+export const JUNIOR_SALARY_SOURCES = ['announced', 'estimate', 'none'] as const;
+export type JuniorSalarySource = (typeof JUNIOR_SALARY_SOURCES)[number];
+
+export const JUNIOR_JUSTIFICATION_STATUSES = [
+  'accepted',
+  'missing',
+  'not_accepted_by_criteria',
+] as const;
+export type JuniorJustificationStatus = (typeof JUNIOR_JUSTIFICATION_STATUSES)[number];
+
+export interface JuniorSalaryCheck {
+  status: JuniorSalaryStatus;
+  /** `estimate`: só há estimativa, que nunca confirma o piso. */
+  source: JuniorSalarySource;
+  contract: string | null;
+  unit: string | null;
+  floor: number | null;
+  announcedMin: number | null;
+  announcedMax: number | null;
+}
+
+/** Decisão do serviço, no mesmo nível usado pelo ranking (RuleBasedRanker). */
+export type JuniorExceptionDecision =
+  | { status: 'not_applicable' }
+  | { status: 'unknown' }
+  | {
+      status: 'qualified' | 'excluded';
+      workFit: boolean;
+      salary: JuniorSalaryCheck;
+      /** `text` preserva a razão da empresa mesmo quando outra condição falha. */
+      justification: { status: JuniorJustificationStatus; text: string | null };
+    };
+
 export interface OpportunityDetailData extends OpportunitySummary {
   compatibilityEvidence: CompatibilityEvidenceItem[];
   compatibilityCriteria: CompatibilityCriteriaSnapshot | null;
@@ -68,6 +120,10 @@ export interface OpportunityDetailData extends OpportunitySummary {
   seniority: SeniorityAssessment;
   corrections: OpportunityCorrectionEntry[];
   timeline: OpportunityTimelineEvent[];
+  /** Itens de estudo calculados com o perfil atual (US006); `null` em respostas sem o campo. */
+  preparation: Preparation | null;
+  /** `null` em respostas anteriores ao campo (fixtures antigas). */
+  juniorException: JuniorExceptionDecision | null;
 }
 
 function asRecord(raw: unknown, name: string): Record<string, unknown> {
@@ -162,6 +218,48 @@ function parseTimelineEvent(raw: unknown, index: number): OpportunityTimelineEve
   };
 }
 
+function asNullableMoney(raw: unknown, field: string): number | null {
+  if (raw === null || raw === undefined) return null;
+  const value = typeof raw === 'string' && raw.trim() ? Number(raw) : raw;
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`Campo ${field} inválido.`);
+  }
+  return value;
+}
+
+export function parseJuniorException(raw: unknown): JuniorExceptionDecision | null {
+  if (raw === undefined || raw === null) return null;
+  const obj = asRecord(raw, 'juniorException');
+  const status = asEnum(obj.status, JUNIOR_EXCEPTION_STATUSES, 'juniorException.status');
+  if (status === 'not_applicable' || status === 'unknown') return { status };
+  if (typeof obj.workFit !== 'boolean') throw new Error('Campo juniorException.workFit inválido.');
+  const salary = asRecord(obj.salary, 'juniorException.salary');
+  const justification = asRecord(obj.justification, 'juniorException.justification');
+  const optionalString = (value: unknown, field: string) =>
+    value === undefined ? null : asNullableString(value, field);
+  return {
+    status,
+    workFit: obj.workFit,
+    salary: {
+      status: asEnum(salary.status, JUNIOR_SALARY_STATUSES, 'juniorException.salary.status'),
+      source: asEnum(salary.source, JUNIOR_SALARY_SOURCES, 'juniorException.salary.source'),
+      contract: optionalString(salary.contract, 'juniorException.salary.contract'),
+      unit: optionalString(salary.unit, 'juniorException.salary.unit'),
+      floor: asNullableMoney(salary.floor, 'juniorException.salary.floor'),
+      announcedMin: asNullableMoney(salary.announcedMin, 'juniorException.salary.announcedMin'),
+      announcedMax: asNullableMoney(salary.announcedMax, 'juniorException.salary.announcedMax'),
+    },
+    justification: {
+      status: asEnum(
+        justification.status,
+        JUNIOR_JUSTIFICATION_STATUSES,
+        'juniorException.justification.status',
+      ),
+      text: optionalString(justification.text, 'juniorException.justification.text'),
+    },
+  };
+}
+
 export function parseCompatibilityEvidenceItem(raw: unknown): CompatibilityEvidenceItem {
   const obj = asRecord(raw, 'CompatibilityEvidenceItem');
   return {
@@ -215,5 +313,7 @@ export function parseOpportunityDetail(raw: unknown): OpportunityDetailData {
     seniority: parseSeniority(obj.seniority),
     corrections: obj.corrections.map((entry, index) => parseCorrectionEntry(entry, index)),
     timeline: obj.timeline.map((event, index) => parseTimelineEvent(event, index)),
+    preparation: parsePreparation(obj.preparation),
+    juniorException: parseJuniorException(obj.juniorException),
   };
 }

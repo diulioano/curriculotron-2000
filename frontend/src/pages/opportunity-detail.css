@@ -419,3 +419,25 @@
   color: var(--ink-muted);
   overflow-wrap: anywhere;
 }
+
+.prep-list,
+.exception-checks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.prep-item {
+  overflow-wrap: anywhere;
+}
+.prep-item.study strong {
+  text-decoration: underline wavy var(--ink-muted);
+}
+.prep-quote {
+  margin: 4px 0 0;
+  padding-left: 10px;
+  border-left: 2px dashed var(--ink-muted);
+  font-size: 14px;
+}

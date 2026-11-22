@@ -728,3 +728,17 @@ textarea.input {
     transition: none;
   }
 }
+
+.profile-summary {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 24px;
+}
+.profile-summary dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+.provenance.corrected {
+  font-weight: 700;
+}
