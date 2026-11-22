@@ -15,7 +15,7 @@ const job = {
   availability: 'unconfirmed',
   compatibility: {
     criteriaVersion: 1,
-    evaluatorVersion: 1,
+    evaluatorVersion: 2,
     assessedAt: '2026-11-14T10:00:00Z',
     current: true,
     roleStatus: 'matched',

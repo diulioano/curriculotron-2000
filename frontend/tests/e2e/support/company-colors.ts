@@ -14,7 +14,7 @@ export function colorJob(companyName: string, id = 'color-0') {
     availability: 'unconfirmed' as const,
     compatibility: {
       criteriaVersion: 1,
-      evaluatorVersion: 1,
+      evaluatorVersion: 2,
       assessedAt: '2026-11-15T10:00:00Z',
       current: true,
       roleStatus: 'matched' as const,
