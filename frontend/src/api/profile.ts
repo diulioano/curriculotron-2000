@@ -273,6 +273,17 @@ export async function previewProfileImport(markdown: string): Promise<ProfilePre
   );
 }
 
+export async function previewProfileFile(file: File): Promise<ProfilePreview> {
+  const form = new FormData();
+  form.append('file', file);
+  return parseProfilePreview(
+    await api<unknown>('/api/profile/import/preview', {
+      method: 'POST',
+      body: form,
+    }),
+  );
+}
+
 export async function saveProfile(payload: SavePayload): Promise<ProfileView> {
   return parseProfileView(await api<unknown>('/api/profile', { method: 'PUT', body: payload }));
 }

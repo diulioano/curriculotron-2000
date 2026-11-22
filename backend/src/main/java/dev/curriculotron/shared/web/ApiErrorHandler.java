@@ -14,6 +14,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -68,6 +69,12 @@ public class ApiErrorHandler {
   ResponseEntity<ApiError> mediaType(HttpMediaTypeNotSupportedException e) {
     return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
         .body(ApiError.of("unsupported_media_type", "Use application/json."));
+  }
+
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  ResponseEntity<ApiError> uploadTooLarge(MaxUploadSizeExceededException e) {
+    return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
+        .body(ApiError.of("invalid_profile_document", "O arquivo excede o limite de 5 MB."));
   }
 
   @ExceptionHandler(NoResourceFoundException.class)

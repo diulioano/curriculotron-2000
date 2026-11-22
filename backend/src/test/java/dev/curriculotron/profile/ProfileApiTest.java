@@ -3,6 +3,7 @@ package dev.curriculotron.profile;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.json.JsonMapper;
@@ -99,6 +101,48 @@ class ProfileApiTest extends AppTestBase {
         .andExpect(jsonPath("$.provenance.primaryTechnology.line").value(2))
         .andExpect(jsonPath("$.provenance.currentSeniority").doesNotExist())
         .andExpect(jsonPath("$.markdown").doesNotExist());
+
+    assertThat(jdbc.sql("SELECT count(*) FROM career_profile").query(Long.class).single()).isZero();
+  }
+
+  @Test
+  void previewsUploadedPdfWithoutPersistingAndRequiresCsrf() throws Exception {
+    byte[] pdf =
+        ResumeDocumentExtractorTest.pdfWithLines(
+            "RESUMO PROFISSIONAL",
+            "Desenvolvedor backend com mais de 4 anos de experiencia em Java e Spring Boot.",
+            "EXPERIENCIA PROFISSIONAL",
+            "Empresa Exemplo",
+            "Desenvolvedor de Software Java",
+            "HABILIDADES TECNICAS",
+            "Java, Spring Boot, Angular, Kafka");
+    var file = new MockMultipartFile("file", "curriculo.pdf", "application/pdf", pdf);
+
+    mvc.perform(multipart("/api/profile/import/preview").file(file).session(session.session()))
+        .andExpect(status().isForbidden());
+
+    mvc.perform(
+            multipart("/api/profile/import/preview")
+                .file(file)
+                .session(session.session())
+                .header("X-CSRF-Token", session.csrf()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.draft.role").value("Desenvolvedor de Software Java"))
+        .andExpect(jsonPath("$.draft.primaryTechnology").value("Java"))
+        .andExpect(jsonPath("$.draft.secondaryTechnologies").value(hasItem("Spring Boot")))
+        .andExpect(jsonPath("$.draft.secondaryTechnologies").value(hasItem("Kafka")))
+        .andExpect(jsonPath("$.draft.currentSeniority").value("pleno"))
+        .andExpect(jsonPath("$.provenance.role.source").value("inferred"));
+
+    var fakePdf =
+        new MockMultipartFile("file", "falso.pdf", "application/pdf", "nao e pdf".getBytes());
+    mvc.perform(
+            multipart("/api/profile/import/preview")
+                .file(fakePdf)
+                .session(session.session())
+                .header("X-CSRF-Token", session.csrf()))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code").value("invalid_profile_document"));
 
     assertThat(jdbc.sql("SELECT count(*) FROM career_profile").query(Long.class).single()).isZero();
   }

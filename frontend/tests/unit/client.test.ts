@@ -62,4 +62,19 @@ describe('cliente da API', () => {
     mockFetch(204);
     await expect(api('/api/session', { method: 'DELETE' })).resolves.toBeUndefined();
   });
+
+  it('envia FormData com X-CSRF-Token e sem forçar Content-Type JSON', async () => {
+    setCsrfToken('tok-upload');
+    const fetchMock = mockFetch(200, { ok: true });
+    const form = new FormData();
+    form.append('file', new File(['%PDF-1.4'], 'curriculo.pdf', { type: 'application/pdf' }));
+
+    await api('/api/profile/import/preview', { method: 'POST', body: form });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const headers = init.headers as Record<string, string>;
+    expect(headers['X-CSRF-Token']).toBe('tok-upload');
+    expect(headers['Content-Type']).toBeUndefined();
+    expect(init.body).toBe(form);
+  });
 });

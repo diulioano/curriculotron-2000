@@ -11,16 +11,16 @@ export async function openProfileEditor(page: Page) {
   await page.goto('/perfil');
   await expect(page.getByRole('heading', { name: 'Seu perfil' })).toBeVisible();
   const edit = page.getByRole('button', { name: 'Editar perfil' });
-  const importForm = page.getByRole('form', { name: 'Importar currículo Markdown' });
+  const importForm = page.getByRole('form', { name: 'Importar currículo' });
   await expect(edit.or(importForm)).toBeVisible();
   if (await edit.isVisible()) await edit.click();
 }
 
-/** Carrega o .md pelo campo de arquivo real e pede o rascunho. */
+/** Carrega o currículo pelo campo de arquivo real e pede o rascunho. */
 export async function importMarkdownFile(page: Page, filePath: string) {
-  const form = page.getByRole('form', { name: 'Importar currículo Markdown' });
-  await form.getByLabel('Arquivo .md').setInputFiles(filePath);
-  await expect(form.getByLabel('Ou cole o Markdown')).not.toHaveValue('');
+  const form = page.getByRole('form', { name: 'Importar currículo' });
+  await form.getByLabel('Arquivo do currículo (.pdf, .md ou .txt)').setInputFiles(filePath);
+  await expect(form.getByLabel('Ou cole o texto do currículo')).not.toHaveValue('');
   await form.getByRole('button', { name: 'Ler e revisar' }).click();
   await expect(editor(page)).toBeVisible();
 }

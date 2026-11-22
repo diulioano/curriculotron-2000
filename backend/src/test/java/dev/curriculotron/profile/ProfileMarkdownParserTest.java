@@ -177,4 +177,92 @@ class ProfileMarkdownParserTest {
                 Field.juniorFloorPjMonthlyBrl));
     assertThat(preview.provenance()).containsOnlyKeys(Field.targetLevels);
   }
+
+  @Test
+  void extractsRealResumeWithSpacedHeadingsFromPdfOrMarkdown() {
+    var preview =
+        ProfileMarkdownParser.parse(
+            """
+            # PESSOA EXEMPLO
+
+            pessoa@exemplo.com | +55(51) 99999-0000 | linkedin.com/in/pessoa-exemplo
+
+            ## **R E S U M O P R O F I S S I O N A L**
+
+            Desenvolvedor backend com mais de 4 anos de experiência em sistemas corporativos de missão crítica, com atuação sólida em Java, Spring Boot, microsserviços, REST APIs, SOLID, Design Patterns e mensageria com Kafka.
+
+            ## **E X P E R I Ê N C I A P R O F I S S I O N A L**
+
+            **Empresa Exemplo, Porto Alegre, RS**
+
+            _Desenvolvedor de Software Java_
+
+            Dez 2023 — Atualmente
+
+            - Desenvolvi e mantive aplicações com Java 17 e Angular.
+            - • Implementei comunicação assíncrona baseada em eventos com Kafka.
+
+            ## **F O R M A Ç Ã O A C A D Ê M I C A**
+
+            **Universidade Exemplo** | 2023 — 2027
+
+            ## **H A B I L I D A D E S T É C N I C A S**
+
+            Java, Java 17, Spring Boot, Angular, React, JavaScript, Kafka, Oracle, Sybase, MongoDB, Git, Jenkins, CI/ CD
+            """);
+
+    var draft = preview.draft();
+    assertThat(draft.role()).isEqualTo("Desenvolvedor de Software Java");
+    assertThat(draft.primaryTechnology()).isEqualTo("Java");
+    assertThat(draft.secondaryTechnologies())
+        .contains("Spring Boot", "Angular", "React", "JavaScript", "Kafka", "Oracle", "CI/CD")
+        .doesNotContain("Java", "Java 17");
+    assertThat(draft.currentSeniority()).isEqualTo(Seniority.pleno);
+    assertThat(draft.targetLevels()).containsExactly(Seniority.pleno);
+    assertThat(preview.provenance().get(Field.role).source()).isEqualTo(Source.inferred);
+    assertThat(preview.provenance().get(Field.primaryTechnology).source())
+        .isEqualTo(Source.inferred);
+    assertThat(preview.provenance().get(Field.currentSeniority).source())
+        .isEqualTo(Source.inferred);
+  }
+
+  @Test
+  void extractsPlainPdfTextWithoutMarkdownMarkers() {
+    var preview =
+        ProfileMarkdownParser.parse(
+            """
+            PESSOA EXEMPLO
+            RESUMO PROFISSIONAL
+            Engenheira de software com 7 anos de experiência em sistemas distribuídos.
+            EXPERIÊNCIA PROFISSIONAL
+            Empresa X
+            Engenheira de Software Backend
+            2022 - Atual
+            HABILIDADES TÉCNICAS
+            Backend: Kotlin, Spring Boot, PostgreSQL, Docker, Kubernetes
+            """);
+
+    var draft = preview.draft();
+    assertThat(draft.role()).isEqualTo("Engenheira de Software Backend");
+    assertThat(draft.primaryTechnology()).isEqualTo("Kotlin");
+    assertThat(draft.secondaryTechnologies())
+        .containsExactly("Spring Boot", "PostgreSQL", "Docker", "Kubernetes");
+    assertThat(draft.currentSeniority()).isEqualTo(Seniority.senior);
+    assertThat(draft.targetLevels()).containsExactly(Seniority.senior);
+  }
+
+  @Test
+  void extractsProfileFromFreeFormWrittenSummary() {
+    var preview =
+        ProfileMarkdownParser.parse(
+            "Sou desenvolvedor backend Java pleno com experiência em Spring Boot, Kafka, Angular e Docker.");
+
+    var draft = preview.draft();
+    assertThat(draft.role()).isEqualTo("Desenvolvedor backend Java");
+    assertThat(draft.primaryTechnology()).isEqualTo("Java");
+    assertThat(draft.secondaryTechnologies())
+        .containsExactly("Spring Boot", "Kafka", "Angular", "Docker");
+    assertThat(draft.currentSeniority()).isEqualTo(Seniority.pleno);
+    assertThat(draft.targetLevels()).containsExactly(Seniority.pleno);
+  }
 }

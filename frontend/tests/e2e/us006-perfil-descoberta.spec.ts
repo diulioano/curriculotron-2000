@@ -98,7 +98,7 @@ test('US006: importado revisado e manual equivalente geram as mesmas recomendaç
   expect(readCareerProfile()?.origin).toBe('markdown');
   await page.reload();
   await expect(page.getByRole('region', { name: 'Perfil salvo' })).toContainText(
-    'Importado de Markdown e revisado',
+    'Importado de currículo e revisado',
   );
   const fromImport = await evaluate(page);
   await page.screenshot({ path: testInfo.outputPath('import-hoje.png'), fullPage: true });
@@ -303,8 +303,8 @@ test('US006: uma falha real de importação permite concluir o cadastro manual',
   freshData();
   await signIn(page);
   await openProfileEditor(page);
-  const form = page.getByRole('form', { name: 'Importar currículo Markdown' });
-  await form.getByLabel('Ou cole o Markdown').fill('x'.repeat(100001));
+  const form = page.getByRole('form', { name: 'Importar currículo' });
+  await form.getByLabel('Ou cole o texto do currículo').fill('x'.repeat(100001));
   await form.getByRole('button', { name: 'Ler e revisar' }).click();
   await expect(form.getByRole('alert')).toContainText('preencher o perfil manualmente');
   expect(readCareerProfile()).toBeUndefined();

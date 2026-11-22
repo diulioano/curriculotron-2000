@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router';
 import { ApiError, api } from '../api/client';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../api/useCompatibilityRefresh';
 import {
   getProfile,
+  previewProfileFile,
   previewProfileImport,
   SENIORITY_LABELS,
   type CareerProfile,
@@ -49,7 +50,7 @@ function ProfileNav() {
   );
 }
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const ORIGIN_LABELS = { markdown: 'Importado de Markdown e revisado', manual: 'Entrada manual' };
+const ORIGIN_LABELS = { markdown: 'Importado de currículo e revisado', manual: 'Entrada manual' };
 
 function ListValue({ items, empty }: { items: string[]; empty: string }) {
   return items.length ? <span>{items.join(', ')}</span> : <span className="muted">{empty}</span>;
@@ -125,56 +126,87 @@ function ProfileSummary({ profile }: { profile: CareerProfile }) {
   );
 }
 
-function MarkdownImport({
+function isPdfFile(file: File): boolean {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+}
+
+function ResumeImport({
   onDraft,
   onManual,
 }: {
   onDraft: (session: EditorSession) => void;
   onManual: () => void;
 }) {
-  const [markdown, setMarkdown] = useState('');
+  const [content, setContent] = useState('');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const preview = useMutation({
-    mutationFn: previewProfileImport,
+    mutationFn: (input: { file: File } | { text: string }) =>
+      'file' in input ? previewProfileFile(input.file) : previewProfileImport(input.text),
     onSuccess: ({ draft, warnings, provenance }) =>
       onDraft({ origin: 'markdown', initial: toForm(draft), warnings, provenance, imported: true }),
   });
   const failure = fileError ?? preview.error?.message;
+  const canSubmit = pdfFile !== null || content.trim().length > 0;
   return (
     <form
       className="note-card dsh stack"
-      aria-label="Importar currículo Markdown"
+      aria-label="Importar currículo"
       onSubmit={(e) => {
         e.preventDefault();
-        if (markdown.trim()) preview.mutate(markdown);
+        if (pdfFile) {
+          preview.mutate({ file: pdfFile });
+        } else if (content.trim()) {
+          preview.mutate({ text: content });
+        }
       }}
     >
-      <h2>Importar currículo em Markdown</h2>
+      <h2>Importar currículo</h2>
       <p className="muted">
-        O conteúdo vira um rascunho para você revisar. Nada é salvo antes da sua confirmação.
+        Envie seu currículo em PDF (ou .md/.txt). O conteúdo vira um rascunho para você revisar.
+        Nada é salvo antes da sua confirmação.
       </p>
       <div className="field">
-        <label htmlFor="profile-markdown-file">Arquivo .md</label>
+        <label htmlFor="profile-resume-file">Arquivo do currículo (.pdf, .md ou .txt)</label>
         <input
-          id="profile-markdown-file"
+          ref={fileInputRef}
+          id="profile-resume-file"
           type="file"
-          accept=".md,.markdown,text/markdown,text/plain"
+          accept=".pdf,application/pdf,.md,.markdown,text/markdown,.txt,text/plain"
           onChange={(e) => {
             const file = e.target.files?.[0];
             setFileError(null);
-            if (!file) return;
-            file.text().then(setMarkdown, () => setFileError('Não foi possível ler o arquivo.'));
+            preview.reset();
+            if (!file) {
+              setPdfFile(null);
+              return;
+            }
+            if (isPdfFile(file)) {
+              setPdfFile(file);
+              setContent('');
+              return;
+            }
+            setPdfFile(null);
+            file.text().then(setContent, () => setFileError('Não foi possível ler o arquivo.'));
           }}
         />
+        {pdfFile && <span className="meta">PDF selecionado: {pdfFile.name}</span>}
       </div>
       <div className="field">
-        <label htmlFor="profile-markdown">Ou cole o Markdown</label>
+        <label htmlFor="profile-markdown">Ou cole o texto do currículo</label>
         <textarea
           className="input"
           id="profile-markdown"
           rows={8}
-          value={markdown}
-          onChange={(e) => setMarkdown(e.target.value)}
+          value={content}
+          onChange={(e) => {
+            setPdfFile(null);
+            setFileError(null);
+            preview.reset();
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            setContent(e.target.value);
+          }}
         />
       </div>
       {failure && (
@@ -183,11 +215,7 @@ function MarkdownImport({
         </p>
       )}
       <div className="actions">
-        <button
-          type="submit"
-          className="btn bt bt-pri"
-          disabled={preview.isPending || !markdown.trim()}
-        >
+        <button type="submit" className="btn bt bt-pri" disabled={preview.isPending || !canSubmit}>
           {preview.isPending ? 'Lendo…' : 'Ler e revisar'}
         </button>
         <button type="button" className="btn bt bt-sec dsh" onClick={onManual}>
@@ -242,7 +270,7 @@ export function Profile() {
               }}
               aria-expanded={importing}
             >
-              Importar Markdown
+              Importar currículo
             </button>
             <button
               className="btn bt bt-pri"
@@ -309,7 +337,7 @@ export function Profile() {
         ) : (
           <>
             {(!profile || importing) && (
-              <MarkdownImport onDraft={start} onManual={() => start(manualSession())} />
+              <ResumeImport onDraft={start} onManual={() => start(manualSession())} />
             )}
             {profile ? (
               <ProfileSummary profile={profile} />

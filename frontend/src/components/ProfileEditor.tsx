@@ -21,13 +21,13 @@ import {
 import { useSaveProfileMutation } from '../api/useCompatibilityRefresh';
 
 const WARNING_LABELS = {
-  missing: 'Não encontrado no Markdown — preencha',
+  missing: 'Não encontrado no currículo — preencha',
   inferred: 'Deduzido do currículo — confira',
-  invalid: 'Valor do Markdown não reconhecido — corrija',
+  invalid: 'Valor do currículo não reconhecido — corrija',
 } as const;
 
 const SOURCE_LABELS: Record<FieldSource, string> = {
-  imported: 'Lido do Markdown',
+  imported: 'Lido do currículo',
   inferred: 'Deduzido do currículo — confira',
   edited: 'Corrigido por você',
   declared: 'Informado por você',
@@ -80,7 +80,7 @@ function Provenance({
     );
   }
   if (Object.keys(session.provenance).length > 0 || isBlank(form[field])) return null;
-  return <span className="meta provenance">Lido do Markdown</span>;
+  return <span className="meta provenance">Lido do currículo</span>;
 }
 
 export function ProfileEditor({
@@ -156,7 +156,9 @@ export function ProfileEditor({
           {session.imported ? 'Revise o rascunho importado' : 'Seu perfil profissional'}
         </strong>
         <span className="meta">
-          {session.origin === 'markdown' ? 'Origem: importação Markdown' : 'Origem: entrada manual'}
+          {session.origin === 'markdown'
+            ? 'Origem: importação de currículo'
+            : 'Origem: entrada manual'}
         </span>
       </div>
       {session.imported && (

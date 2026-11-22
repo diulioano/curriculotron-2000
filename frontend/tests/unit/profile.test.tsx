@@ -48,7 +48,15 @@ function stubApi(routes: Record<string, Handler>) {
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const key = `${init?.method ?? 'GET'} ${String(input)}`;
-      calls.push({ key, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+      calls.push({
+        key,
+        body:
+          init?.body instanceof FormData
+            ? init.body
+            : init?.body
+              ? JSON.parse(String(init.body))
+              : undefined,
+      });
       if (key === 'GET /api/session') {
         return json(200, { authenticated: true, setupRequired: false, csrfToken: 'csrf' });
       }
@@ -112,7 +120,10 @@ describe('perfil por importação Markdown', () => {
       },
     });
     openAt('/perfil');
-    await userEvent.type(await screen.findByLabelText('Ou cole o Markdown'), '- Cargo: Dev');
+    await userEvent.type(
+      await screen.findByLabelText('Ou cole o texto do currículo'),
+      '- Cargo: Dev',
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Ler e revisar' }));
 
     const form = await screen.findByRole('form', { name: 'Revisão do perfil' });
@@ -123,7 +134,7 @@ describe('perfil por importação Markdown', () => {
       within(prioritiesField).getByLabelText('Empresas prioritárias, em ordem (uma por linha)'),
     ).toHaveValue('CI&T\nSAP');
     expect(within(prioritiesField).getByText('Informado por você')).toBeVisible();
-    expect(within(prioritiesField).queryByText('Lido do Markdown')).not.toBeInTheDocument();
+    expect(within(prioritiesField).queryByText('Lido do currículo')).not.toBeInTheDocument();
     expect(within(prioritiesField).queryByText('Corrigido por você')).not.toBeInTheDocument();
 
     await userEvent.type(
@@ -138,7 +149,7 @@ describe('perfil por importação Markdown', () => {
     await userEvent.click(plenoCheckbox);
     await userEvent.click(plenoCheckbox);
     const levelsField = within(form).getByRole('group', { name: 'Níveis desejados' });
-    expect(within(levelsField).getByText('Lido do Markdown')).toBeVisible();
+    expect(within(levelsField).getByText('Lido do currículo')).toBeVisible();
     expect(within(levelsField).queryByText('Corrigido por você')).not.toBeInTheDocument();
 
     await userEvent.click(within(form).getByRole('button', { name: 'Salvar perfil' }));
@@ -167,6 +178,54 @@ describe('perfil por importação Markdown', () => {
     expect(screen.getByLabelText('Empresas prioritárias, em ordem (uma por linha)')).toHaveValue(
       'CI&T\nSAP',
     );
+  });
+
+  it('envia arquivo PDF via multipart para pré-visualização e abre o rascunho preenchido', async () => {
+    const calls = stubApi({
+      'GET /api/profile': () => json(200, { profile: null, assessment: assessment(1) }),
+      'POST /api/profile/import/preview': () =>
+        json(200, {
+          draft: {
+            role: 'Desenvolvedor de Software Java',
+            primaryTechnology: 'Java',
+            secondaryTechnologies: ['Spring Boot', 'Kafka'],
+            flexibleTechnologies: [],
+            currentSeniority: 'pleno',
+            targetLevels: ['pleno'],
+            priorities: [],
+            juniorFloorCltMonthlyBrl: null,
+            juniorFloorPjMonthlyBrl: null,
+          },
+          warnings: [{ field: 'role', code: 'inferred', message: 'Cargo inferido do currículo.' }],
+          provenance: {
+            role: { source: 'inferred', line: 5, excerpt: 'Desenvolvedor de Software Java' },
+            primaryTechnology: {
+              source: 'inferred',
+              line: 12,
+              excerpt: 'Java, Spring Boot, Kafka',
+            },
+          },
+        }),
+    });
+    openAt('/perfil');
+
+    const input = await screen.findByLabelText('Arquivo do currículo (.pdf, .md ou .txt)');
+    const pdf = new File(['%PDF-1.4'], 'curriculo.pdf', { type: 'application/pdf' });
+    await userEvent.upload(input, pdf);
+    expect(screen.getByText('PDF selecionado: curriculo.pdf')).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Ler e revisar' }));
+
+    const form = await screen.findByRole('form', { name: 'Revisão do perfil' });
+    expect(within(form).getByLabelText('Cargo desejado')).toHaveValue(
+      'Desenvolvedor de Software Java',
+    );
+    expect(within(form).getByLabelText('Tecnologia principal')).toHaveValue('Java');
+    expect(within(form).getByLabelText('Tecnologias secundárias (uma por linha)')).toHaveValue(
+      'Spring Boot\nKafka',
+    );
+    const previewCall = calls.find((c) => c.key === 'POST /api/profile/import/preview');
+    expect(previewCall?.body).toBeInstanceOf(FormData);
+    expect((previewCall?.body as FormData).get('file')).toBe(pdf);
   });
 
   it('abre rascunho de servidor sem origem por campo e marca correções no envio', async () => {
@@ -199,14 +258,17 @@ describe('perfil por importação Markdown', () => {
     });
     openAt('/perfil');
 
-    await userEvent.type(await screen.findByLabelText('Ou cole o Markdown'), '# Ana{enter}**Dev**');
+    await userEvent.type(
+      await screen.findByLabelText('Ou cole o texto do currículo'),
+      '# Ana{enter}**Dev**',
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Ler e revisar' }));
 
     const form = await screen.findByRole('form', { name: 'Revisão do perfil' });
     expect(within(form).getByText('Nada foi salvo ainda.', { exact: false })).toBeVisible();
     expect(within(form).getByText('Deduzido do currículo — confira')).toBeVisible();
-    expect(within(form).getByText('Não encontrado no Markdown — preencha')).toBeVisible();
-    expect(within(form).getAllByText('Lido do Markdown').length).toBeGreaterThan(0);
+    expect(within(form).getByText('Não encontrado no currículo — preencha')).toBeVisible();
+    expect(within(form).getAllByText('Lido do currículo').length).toBeGreaterThan(0);
     expect(calls.some((c) => c.key === 'PUT /api/profile')).toBe(false);
 
     const primary = within(form).getByLabelText('Tecnologia principal');
@@ -245,7 +307,7 @@ describe('perfil por importação Markdown', () => {
     });
     const summary = screen.getByRole('region', { name: 'Perfil salvo' });
     expect(
-      within(summary).getByText('Importado de Markdown e revisado', { exact: false }),
+      within(summary).getByText('Importado de currículo e revisado', { exact: false }),
     ).toBeVisible();
     expect(within(summary).getByText('SAP, CWI')).toBeVisible();
   });
@@ -290,7 +352,7 @@ describe('perfil por importação Markdown', () => {
     });
     openAt('/perfil');
 
-    await userEvent.type(await screen.findByLabelText('Ou cole o Markdown'), '# Ana');
+    await userEvent.type(await screen.findByLabelText('Ou cole o texto do currículo'), '# Ana');
     await userEvent.click(screen.getByRole('button', { name: 'Ler e revisar' }));
     const form = await screen.findByRole('form', { name: 'Revisão do perfil' });
     expect(within(form).getAllByText('Deduzido do currículo — confira')).toHaveLength(3);
@@ -346,7 +408,7 @@ describe('perfil por importação Markdown', () => {
     });
     openAt('/perfil');
 
-    await userEvent.type(await screen.findByLabelText('Ou cole o Markdown'), 'texto');
+    await userEvent.type(await screen.findByLabelText('Ou cole o texto do currículo'), 'texto');
     await userEvent.click(screen.getByRole('button', { name: 'Ler e revisar' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Markdown inválido. Você pode preencher o perfil manualmente',
@@ -354,7 +416,7 @@ describe('perfil por importação Markdown', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Preencher manualmente' }));
 
     const form = await screen.findByRole('form', { name: 'Revisão do perfil' });
-    expect(within(form).queryByText('Lido do Markdown')).not.toBeInTheDocument();
+    expect(within(form).queryByText('Lido do currículo')).not.toBeInTheDocument();
     await userEvent.click(within(form).getByRole('button', { name: 'Salvar perfil' }));
     expect(within(form).getByRole('alert')).toHaveTextContent('Informe o cargo desejado.');
     expect(calls.some((c) => c.key === 'PUT /api/profile')).toBe(false);
@@ -401,7 +463,7 @@ describe('perfil por importação Markdown', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Editar perfil' }));
     const form = screen.getByRole('form', { name: 'Revisão do perfil' });
-    expect(within(form).getByText('Origem: importação Markdown')).toBeVisible();
+    expect(within(form).getByText('Origem: importação de currículo')).toBeVisible();
     const secondary = within(form).getByLabelText('Tecnologias secundárias (uma por linha)');
     await userEvent.type(secondary, '{enter}Docker');
     await userEvent.click(within(form).getByRole('button', { name: 'Salvar perfil' }));

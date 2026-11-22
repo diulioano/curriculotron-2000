@@ -53,9 +53,11 @@ Valores monetários trafegam como número JSON (BigDecimal), igual a `/api/crite
 
 ## POST /api/profile/import/preview
 
-Converte Markdown em rascunho editável. **Não grava nada.**
+Converte currículo (PDF, Markdown ou texto puro) em rascunho editável. **Não grava nada.**
 
-Request: `{ "markdown": string }` (1..100000 chars).
+Request (dois formatos suportados):
+- `application/json`: `{ "markdown": string }` (1..100000 chars).
+- `multipart/form-data`: parte `file` com currículo em `.pdf` (até 5 MB e 30 páginas, com texto selecionável), `.md`, `.markdown` ou `.txt` (UTF-8).
 
 200:
 ```ts
@@ -100,7 +102,9 @@ linha em negrito `**Cargo | Tec1, Tec2 & Tec3**` sob o `#` (cargo, principal e s
 `mid-level`/`pleno`/`júnior`/`sênior` no texto (senioridade). Campos assim vêm com warning
 `inferred`; campos ausentes vêm com `missing`. A pessoa edita o rascunho e salva com o PUT.
 
-400 `invalid_profile_markdown` para corpo ausente/vazio/grande demais.
+400 `invalid_profile_markdown` para corpo JSON ausente/vazio/grande demais.
+400 `invalid_profile_document` para arquivo vazio, formato não suportado, PDF inválido/protegido/escaneado ou acima do limite de páginas/texto.
+413 `invalid_profile_document` para arquivo acima de 5 MB.
 
 ## PUT /api/profile
 
