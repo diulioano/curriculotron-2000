@@ -29,10 +29,16 @@ public final class RoleMatcher {
   }
 
   public AxisMatch match(List<VacancyEvidence> evidence, List<String> roles) {
+    return match(evidence, roles, false);
+  }
+
+  AxisMatch match(
+      List<VacancyEvidence> evidence, List<String> roles, boolean primaryTechnologyMatched) {
     if (roles.isEmpty())
       return new AxisMatch(Axis.unknown, List.of(), List.of("role_not_configured"));
     var matches = new ArrayList<EvidenceItem>();
     var mismatches = new ArrayList<EvidenceItem>();
+    var partialMatches = new ArrayList<EvidenceItem>();
     for (var item : evidence) {
       String title = normalize(item.title());
       String text = normalize(item.text());
@@ -57,6 +63,7 @@ public final class RoleMatcher {
         title += " backend";
         descriptionUsed = true;
       }
+      EvidenceItem partial = null;
       boolean matched = false;
       boolean explicitDifference = false;
       for (String target : roles) {
@@ -85,6 +92,10 @@ public final class RoleMatcher {
             || desiredSpecialty.isEmpty()
             || desiredSpecialty.equals(observedSpecialty)) {
           matched = true;
+        } else if (primaryTechnologyMatched
+            && desiredSpecialty.equals("fullstack")
+            && (observedSpecialty.equals("backend") || observedSpecialty.equals("frontend"))) {
+          partial = proof(item, target, descriptionUsed);
         } else if (!observedSpecialty.isEmpty()) {
           explicitDifference = true;
         }
@@ -93,11 +104,18 @@ public final class RoleMatcher {
           break;
         }
       }
-      if (!matched && explicitDifference) mismatches.add(proof(item, null, descriptionUsed));
+      if (!matched && partial != null) partialMatches.add(partial);
+      else if (!matched && explicitDifference) mismatches.add(proof(item, null, descriptionUsed));
     }
+    boolean relatedSpecialty = matches.isEmpty() && !partialMatches.isEmpty();
+    matches.addAll(partialMatches);
     if (!matches.isEmpty() && !mismatches.isEmpty())
       return new AxisMatch(Axis.unknown, combine(matches, mismatches), List.of("role_conflict"));
-    if (!matches.isEmpty()) return new AxisMatch(Axis.matched, matches, List.of("role_match"));
+    if (!matches.isEmpty())
+      return new AxisMatch(
+          Axis.matched,
+          matches,
+          List.of(relatedSpecialty ? "role_partial_specialty" : "role_match"));
     if (!mismatches.isEmpty())
       return new AxisMatch(Axis.mismatched, mismatches, List.of("role_mismatch"));
     return new AxisMatch(Axis.unknown, List.of(), List.of("role_not_confirmed"));
@@ -134,7 +152,8 @@ public final class RoleMatcher {
       return Family.commercial;
     if (value.matches(".*\\b(coordenador[a]?|gerente|manager|director|diretor[a]?)\\b.*"))
       return Family.management;
-    if (DEVELOPER.matcher(value).find()) return Family.development;
+    if (DEVELOPER.matcher(value).find()
+        || value.matches("full[ -]?stack|back[ -]?end|front[ -]?end")) return Family.development;
     return Family.unknown;
   }
 

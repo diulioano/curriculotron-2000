@@ -6,6 +6,26 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface SelectionJpaRepository extends JpaRepository<DailySelectionEntity, DailySelectionId> {
+  /** US006: nota por trabalho e stack; empresa prioritária só desempata nota igual. */
+  String SCORE_THEN_PRIORITY_COMPANY =
+      "o.fitScore desc, "
+          + "case when exists (select c.id from CompanySourceEntity c "
+          + "where lower(c.name) = lower(o.companyName) and c.tier = 'priority') then 0 else 1 end, "
+          + "o.createdAt, o.id";
+
+  @Query(
+      "select o.id from OpportunityEntity o "
+          + "join OpportunityCompatibilityEntity a on a.opportunityId = o.id "
+          + "where o.userDecision = 'none' and o.availability <> 'closed' and o.mergedInto is null "
+          + "and a.criteriaVersion = :criteriaVersion and a.evaluatorVersion = :evaluatorVersion "
+          + "and a.evidenceRevision = o.evidenceRevision and o.fit in ('strong','medium') "
+          + "and a.roleStatus = 'matched' and a.technologyStatus in ('matched','unrestricted') "
+          + "order by case when o.fit = 'strong' then 0 else 1 end, "
+          + SCORE_THEN_PRIORITY_COMPANY)
+  List<String> recommended(
+      @Param("criteriaVersion") long criteriaVersion,
+      @Param("evaluatorVersion") int evaluatorVersion);
+
   @Query(
       "select d.id.opportunityId from DailySelectionEntity d "
           + "where d.id.localDate = :date order by d.rank")
@@ -37,7 +57,9 @@ interface SelectionJpaRepository extends JpaRepository<DailySelectionEntity, Dai
           + "and a.criteriaVersion = :criteriaVersion and a.evaluatorVersion = :evaluatorVersion "
           + "and a.evidenceRevision = o.evidenceRevision "
           + "and a.roleStatus = 'matched' and a.technologyStatus in ('matched', 'unrestricted') "
-          + "and o.fit = 'strong' order by o.fitScore desc, o.createdAt, o.id")
+          + "and o.fit = 'strong' "
+          + "order by "
+          + SCORE_THEN_PRIORITY_COMPANY)
   List<String> eligible(
       @Param("criteriaVersion") long criteriaVersion,
       @Param("evaluatorVersion") int evaluatorVersion);
@@ -52,7 +74,8 @@ interface SelectionJpaRepository extends JpaRepository<DailySelectionEntity, Dai
           + "and a.criteriaVersion = :criteriaVersion and a.evaluatorVersion = :evaluatorVersion "
           + "and a.evidenceRevision = o.evidenceRevision "
           + "and a.roleStatus <> 'mismatched' and a.technologyStatus <> 'mismatched' "
-          + "order by o.fitScore desc, o.createdAt, o.id")
+          + "order by "
+          + SCORE_THEN_PRIORITY_COMPANY)
   List<String> secondary(
       @Param("criteriaVersion") long criteriaVersion,
       @Param("evaluatorVersion") int evaluatorVersion);

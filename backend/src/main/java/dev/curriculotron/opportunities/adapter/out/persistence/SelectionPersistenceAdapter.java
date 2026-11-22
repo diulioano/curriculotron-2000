@@ -29,6 +29,11 @@ class SelectionPersistenceAdapter implements SelectionRepository {
   }
 
   @Override
+  public List<String> recommended(long criteriaVersion, int evaluatorVersion) {
+    return selections.recommended(criteriaVersion, evaluatorVersion);
+  }
+
+  @Override
   public List<String> secondary(long criteriaVersion, int evaluatorVersion) {
     return selections.secondary(criteriaVersion, evaluatorVersion);
   }

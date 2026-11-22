@@ -13,6 +13,8 @@ public interface SelectionRepository {
 
   List<String> eligible(long criteriaVersion, int evaluatorVersion, int limit);
 
+  List<String> recommended(long criteriaVersion, int evaluatorVersion);
+
   List<String> secondary(long criteriaVersion, int evaluatorVersion);
 
   void select(LocalDate date, String opportunityId, int rank);

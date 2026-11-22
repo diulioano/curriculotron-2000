@@ -65,7 +65,7 @@ class CompatibilityDetailApiTest extends AppTestBase {
               """
               UPDATE compatibility_refresh
               SET target_criteria_version = 1,
-                  evaluator_version = 1,
+                  evaluator_version = 2,
                   run_id = NULL,
                   state = 'ready',
                   started_at = NULL,
@@ -111,7 +111,7 @@ class CompatibilityDetailApiTest extends AppTestBase {
             .andExpect(jsonPath("$.id").value(id))
             .andExpect(jsonPath("$.compatibility.current").value(true))
             .andExpect(jsonPath("$.compatibility.criteriaVersion").value(1))
-            .andExpect(jsonPath("$.compatibility.evaluatorVersion").value(1))
+            .andExpect(jsonPath("$.compatibility.evaluatorVersion").value(2))
             .andExpect(jsonPath("$.compatibility.roleStatus").value("matched"))
             .andExpect(jsonPath("$.compatibility.technologyStatus").value("matched"))
             .andExpect(

@@ -115,7 +115,7 @@ class CompatibilityConcurrencyTest extends AppTestBase {
               """
               UPDATE compatibility_refresh
               SET target_criteria_version = 1,
-                  evaluator_version = 1,
+                  evaluator_version = 2,
                   run_id = NULL,
                   state = 'pending',
                   started_at = NULL,
@@ -692,13 +692,25 @@ class CompatibilityConcurrencyTest extends AppTestBase {
             List.of("Stale v1"));
 
     assertThat(writer.write(() -> assessments.saveIfCurrent(obsoleteAssessment))).isFalse();
-    assertThat(refresh.recordProgress(staleReservation.runId(), 1, 1, 1)).isFalse();
-    assertThat(refresh.completeIfOwner(staleReservation.runId(), 1, 1)).isEmpty();
-    assertThat(refresh.failIfOwner(staleReservation.runId(), 1, 1, "assessment_failed")).isFalse();
+    assertThat(
+            refresh.recordProgress(
+                staleReservation.runId(), 1, staleReservation.evaluatorVersion(), 1))
+        .isFalse();
+    assertThat(
+            refresh.completeIfOwner(
+                staleReservation.runId(), 1, staleReservation.evaluatorVersion()))
+        .isEmpty();
+    assertThat(
+            refresh.failIfOwner(
+                staleReservation.runId(),
+                1,
+                staleReservation.evaluatorVersion(),
+                "assessment_failed"))
+        .isFalse();
 
     // New runB remains owner in running state for v2, and no obsolete assessment was saved.
     assertThat(assessments.find(opp)).isEmpty();
-    assertThat(refresh.isOwner(newRun.runId(), 2, 1)).isTrue();
+    assertThat(refresh.isOwner(newRun.runId(), 2, newRun.evaluatorVersion())).isTrue();
     var status = refresh.status();
     assertThat(status.criteriaVersion()).isEqualTo(2);
     assertThat(status.state()).isEqualTo(State.running);

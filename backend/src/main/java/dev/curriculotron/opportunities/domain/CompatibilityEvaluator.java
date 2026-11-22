@@ -21,6 +21,20 @@ public final class CompatibilityEvaluator {
 
   public Result evaluate(
       List<VacancyEvidence> evidence, List<String> targetRoles, List<String> stack) {
-    return new Result(roles.match(evidence, targetRoles), technologies.match(evidence, stack));
+    return evaluate(evidence, targetRoles, stack, null);
+  }
+
+  public Result evaluate(
+      List<VacancyEvidence> evidence,
+      List<String> targetRoles,
+      List<String> stack,
+      String primaryTechnology) {
+    var technology = technologies.match(evidence, stack);
+    boolean primaryMatched =
+        primaryTechnology != null
+            && technology.status() == CompatibilityAssessment.Axis.matched
+            && RuleBasedRanker.confirmedTechnologies(technology.evidence())
+                .contains(StudyPreparation.base(primaryTechnology));
+    return new Result(roles.match(evidence, targetRoles, primaryMatched), technology);
   }
 }

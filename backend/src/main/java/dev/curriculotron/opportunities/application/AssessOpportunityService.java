@@ -5,6 +5,7 @@ import dev.curriculotron.opportunities.domain.CompatibilityAssessment;
 import dev.curriculotron.opportunities.domain.CompatibilityAssessment.Axis;
 import dev.curriculotron.opportunities.domain.CompatibilityEvaluator;
 import dev.curriculotron.opportunities.domain.JobFactExtractor;
+import dev.curriculotron.opportunities.domain.JuniorExceptionPolicy;
 import dev.curriculotron.opportunities.domain.ObjectiveFilter;
 import dev.curriculotron.opportunities.domain.RuleBasedRanker;
 import dev.curriculotron.opportunities.domain.VacancyEvidence;
@@ -12,6 +13,7 @@ import dev.curriculotron.shared.AppClock;
 import dev.curriculotron.shared.persistence.WriteExecutor;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 
@@ -51,6 +53,54 @@ public final class AssessOpportunityService {
     var job = input.job();
     var settings = input.settings();
     var criteria = settings.criteria();
+    var ranking = rank(input);
+    var comparison = ranking.comparison();
+    var ranked = ranking.ranked();
+    var reasons = new ArrayList<>(ranked.reasons());
+    if (comparison.role().status() == Axis.unknown)
+      reasons.add("Função compatível ainda não confirmada.");
+    if (comparison.role().status() == Axis.mismatched)
+      reasons.add("Função incompatível com os cargos configurados.");
+    if (comparison.technology().status() == Axis.unknown)
+      reasons.add("Compatibilidade tecnológica não confirmada.");
+    if (comparison.technology().status() == Axis.mismatched)
+      reasons.add("Tecnologias incompatíveis com o perfil.");
+    var codes = new ArrayList<>(comparison.role().reasons());
+    codes.addAll(comparison.technology().reasons());
+    var proof = new ArrayList<>(comparison.role().evidence());
+    proof.addAll(comparison.technology().evidence());
+    return new CompatibilityAssessment(
+        job.id(),
+        settings.version(),
+        CompatibilityAssessment.EVALUATOR_VERSION,
+        input.evidenceRevision(),
+        clock.now(),
+        comparison.role().status(),
+        comparison.technology().status(),
+        codes,
+        new CompatibilityAssessment.CriteriaSnapshot(
+            criteria, settings.cltMinimum(), settings.pjMinimum()),
+        proof,
+        ranked.fit(),
+        ranked.score(),
+        reasons);
+  }
+
+  /**
+   * Decisão da exceção júnior com os mesmos dados, nível e regras do ranking; vazia quando o nível
+   * usado pelo ranking não é júnior, quando júnior é nível alvo ou sem perfil salvo.
+   */
+  public Optional<JuniorExceptionPolicy.Decision> juniorException(
+      AssessmentInputService.Input input) {
+    return Optional.ofNullable(rank(input).ranked().juniorException());
+  }
+
+  private record Ranking(CompatibilityEvaluator.Result comparison, RuleBasedRanker.Result ranked) {}
+
+  private Ranking rank(AssessmentInputService.Input input) {
+    var job = input.job();
+    var settings = input.settings();
+    var criteria = settings.criteria();
     List<VacancyEvidence> evidence = input.evidence();
     if (evidence.isEmpty())
       evidence =
@@ -70,7 +120,10 @@ public final class AssessOpportunityService {
                   null));
     var comparison =
         evaluator.evaluate(
-            evidence, new ArrayList<>(criteria.roles()), new ArrayList<>(criteria.stack()));
+            evidence,
+            new ArrayList<>(criteria.roles()),
+            new ArrayList<>(criteria.stack()),
+            input.profile() == null ? null : input.profile().primaryTechnology());
     var salary = job.salary();
     var salaryResult =
         salaryFilter.evaluate(
@@ -102,34 +155,13 @@ public final class AssessOpportunityService {
                 Set.of(),
                 salaryResult),
             criteria,
-            comparison);
-    var reasons = new ArrayList<>(ranked.reasons());
-    if (comparison.role().status() == Axis.unknown)
-      reasons.add("Função compatível ainda não confirmada.");
-    if (comparison.role().status() == Axis.mismatched)
-      reasons.add("Função incompatível com os cargos configurados.");
-    if (comparison.technology().status() == Axis.unknown)
-      reasons.add("Compatibilidade tecnológica não confirmada.");
-    if (comparison.technology().status() == Axis.mismatched)
-      reasons.add("Tecnologias incompatíveis com o perfil.");
-    var codes = new ArrayList<>(comparison.role().reasons());
-    codes.addAll(comparison.technology().reasons());
-    var proof = new ArrayList<>(comparison.role().evidence());
-    proof.addAll(comparison.technology().evidence());
-    return new CompatibilityAssessment(
-        job.id(),
-        settings.version(),
-        CompatibilityAssessment.EVALUATOR_VERSION,
-        input.evidenceRevision(),
-        clock.now(),
-        comparison.role().status(),
-        comparison.technology().status(),
-        codes,
-        new CompatibilityAssessment.CriteriaSnapshot(
-            criteria, settings.cltMinimum(), settings.pjMinimum()),
-        proof,
-        ranked.fit(),
-        ranked.score(),
-        reasons);
+            comparison,
+            input.profile(),
+            new RuleBasedRanker.AnnouncedSalary(
+                job.contractType(),
+                salary == null ? "unknown" : salary.unit(),
+                salary == null ? null : salary.min(),
+                salary == null ? null : salary.max()));
+    return new Ranking(comparison, ranked);
   }
 }

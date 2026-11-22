@@ -61,13 +61,15 @@ public class OpportunityService {
   @Transactional(readOnly = true)
   public List<Opportunity> list(String kind, LocalDate date) {
     if ("discarded".equals(kind)) return jobs.discarded();
-    if (!"selection".equals(kind) && !"secondary".equals(kind))
-      throw new IllegalArgumentException("Lista inválida");
     long version = criteria.current().version();
+    int evaluator = CompatibilityAssessment.EVALUATOR_VERSION;
     List<String> ids =
-        "selection".equals(kind)
-            ? selections.visibleSelected(date, version, CompatibilityAssessment.EVALUATOR_VERSION)
-            : selections.secondary(version, CompatibilityAssessment.EVALUATOR_VERSION);
+        switch (kind) {
+          case "selection" -> selections.visibleSelected(date, version, evaluator);
+          case "secondary" -> selections.secondary(version, evaluator);
+          case "recommended" -> selections.recommended(version, evaluator);
+          default -> throw new IllegalArgumentException("Lista inválida");
+        };
     return ids.stream()
         .map(this::get)
         .filter(job -> job.mergedInto() == null)

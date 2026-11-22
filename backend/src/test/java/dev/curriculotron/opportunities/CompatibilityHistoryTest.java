@@ -81,7 +81,7 @@ class CompatibilityHistoryTest extends AppTestBase {
               """
               UPDATE compatibility_refresh
               SET target_criteria_version = 1,
-                  evaluator_version = 1,
+                  evaluator_version = 2,
                   run_id = NULL,
                   state = 'pending',
                   started_at = NULL,

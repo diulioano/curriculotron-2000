@@ -86,7 +86,7 @@ class CompatibilityDomainTest {
     return new CompatibilityAssessment(
         "o",
         1,
-        1,
+        CompatibilityAssessment.EVALUATOR_VERSION,
         1,
         Instant.EPOCH,
         role,

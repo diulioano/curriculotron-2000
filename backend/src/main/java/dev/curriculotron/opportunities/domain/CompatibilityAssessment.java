@@ -20,7 +20,7 @@ public record CompatibilityAssessment(
     String fit,
     int fitScore,
     List<String> fitReasons) {
-  public static final int EVALUATOR_VERSION = 1;
+  public static final int EVALUATOR_VERSION = 2;
 
   public enum Axis {
     matched,

@@ -62,7 +62,7 @@ class OpportunityApiTest extends AppTestBase {
               """
               UPDATE compatibility_refresh
               SET target_criteria_version = 1,
-                  evaluator_version = 1,
+                  evaluator_version = 2,
                   run_id = NULL,
                   state = 'pending',
                   started_at = NULL,
@@ -220,7 +220,7 @@ class OpportunityApiTest extends AppTestBase {
         .andExpect(jsonPath("$.assessment.criteriaVersion").value(1))
         .andExpect(jsonPath("$.assessment.remainingCount").value(0))
         .andExpect(jsonPath("$.items[0].compatibility.criteriaVersion").value(1))
-        .andExpect(jsonPath("$.items[0].compatibility.evaluatorVersion").value(1))
+        .andExpect(jsonPath("$.items[0].compatibility.evaluatorVersion").value(2))
         .andExpect(jsonPath("$.items[0].compatibility.assessedAt").isString())
         .andExpect(jsonPath("$.items[0].compatibility.current").value(true))
         .andExpect(jsonPath("$.items[0].compatibility.roleStatus").value("matched"))

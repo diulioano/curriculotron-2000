@@ -1,12 +1,17 @@
 package dev.curriculotron.opportunities.adapter.in.web;
 
+import dev.curriculotron.opportunities.application.AssessOpportunityService;
+import dev.curriculotron.opportunities.application.AssessmentInputService;
 import dev.curriculotron.opportunities.application.OpportunityCorrectionService;
 import dev.curriculotron.opportunities.application.OpportunityService;
 import dev.curriculotron.opportunities.application.OpportunityTimelineService;
 import dev.curriculotron.opportunities.domain.CompatibilityAssessment.Axis;
 import dev.curriculotron.opportunities.domain.CorrectableOpportunityField;
 import dev.curriculotron.opportunities.domain.SeniorityDeriver;
+import dev.curriculotron.opportunities.domain.StudyPreparation;
 import dev.curriculotron.opportunities.domain.VacancyEvidence;
+import dev.curriculotron.profile.application.port.out.CareerProfileRepository;
+import dev.curriculotron.salary.application.SalaryReference;
 import java.util.ArrayList;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,16 +26,26 @@ public class OpportunityDetailQuery {
   private final OpportunitySummaries summaries;
   private final OpportunityCorrectionService corrections;
   private final OpportunityTimelineService timeline;
+  private final CareerProfileRepository profiles;
+  private final AssessmentInputService assessmentInputs;
+  private final AssessOpportunityService assessor;
+  private final StudyPreparation preparation = new StudyPreparation();
 
   public OpportunityDetailQuery(
       OpportunityService jobs,
       OpportunitySummaries summaries,
       OpportunityCorrectionService corrections,
-      OpportunityTimelineService timeline) {
+      OpportunityTimelineService timeline,
+      CareerProfileRepository profiles,
+      AssessmentInputService assessmentInputs,
+      AssessOpportunityService assessor) {
     this.jobs = jobs;
     this.summaries = summaries;
     this.corrections = corrections;
     this.timeline = timeline;
+    this.profiles = profiles;
+    this.assessmentInputs = assessmentInputs;
+    this.assessor = assessor;
   }
 
   /**
@@ -91,7 +106,40 @@ public class OpportunityDetailQuery {
             job.facts(),
             job.inferred(),
             descriptions),
-        timeline.of(id).stream().map(OpportunityTimelineView::of).toList());
+        timeline.of(id).stream().map(OpportunityTimelineView::of).toList(),
+        preparation.plan(projection.storedEvidence(), profileTechnologies()),
+        juniorException(id, summary.salaryReference()));
+  }
+
+  /**
+   * Mesma decisão do ranking, recalculada com os dados atuais: o detalhe não interpreta os motivos
+   * gravados nem infere o nível por conta própria.
+   */
+  private OpportunityDetailResponse.JuniorExceptionView juniorException(
+      String id, SalaryReference reference) {
+    var input = assessmentInputs.snapshot(id);
+    if (input.isEmpty() || input.get().profile() == null)
+      return OpportunityDetailResponse.JuniorExceptionView.UNKNOWN;
+    boolean estimate = reference != null && reference.estimate() != null;
+    return assessor
+        .juniorException(input.get())
+        .map(decision -> OpportunityDetailResponse.JuniorExceptionView.of(decision, estimate))
+        .orElse(OpportunityDetailResponse.JuniorExceptionView.NOT_APPLICABLE);
+  }
+
+  /** Perfil lido agora: a preparação reflete a última edição sem esperar a reavaliação. */
+  private StudyPreparation.ProfileTechnologies profileTechnologies() {
+    return profiles
+        .current()
+        .map(stored -> {
+          var profile = stored.profile();
+          return new StudyPreparation.ProfileTechnologies(
+              profile.version(),
+              profile.primaryTechnology(),
+              profile.secondaryTechnologies(),
+              profile.flexibleTechnologies());
+        })
+        .orElse(StudyPreparation.ProfileTechnologies.NONE);
   }
 
   private static void addCompatibilityMissing(
