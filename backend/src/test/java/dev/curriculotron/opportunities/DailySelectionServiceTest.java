@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 class DailySelectionServiceTest extends AppTestBase {
   @Autowired DailySelectionService service;
+  @Autowired dev.curriculotron.sources.CriteriaStore criteriaStore;
   @Autowired OpportunityService opportunities;
   @Autowired SelectionRepository selectionRepository;
   @Autowired CompatibilityRepository compatibilityRepository;
@@ -64,6 +65,28 @@ class DailySelectionServiceTest extends AppTestBase {
     clock.setClock(Clock.fixed(Instant.parse("2026-11-15T15:00:00Z"), AppClock.ZONE));
     assertThat(service.selectToday()).isEmpty();
     assertThat(service.secondary()).hasSize(7);
+  }
+
+  @Test
+  void priorityCompanyOnlyBreaksTiesAndOtherCompaniesStayEligible() {
+    writer.run(
+        () -> criteriaStore.replacePriorityCompanies(List.of("Empresa escolhida"), clock.now()));
+    var regular =
+        seed(3, "strong", 80, "Empresa", "none", "open", null, Axis.matched, Axis.matched);
+    var priority =
+        seed(
+            1, "strong", 80, "Empresa escolhida", "none", "open", null, Axis.matched, Axis.matched);
+    var higher = seed(1, "strong", 85, "Outra", "none", "open", null, Axis.matched, Axis.matched);
+
+    var recommended =
+        opportunities.list("recommended", clock.localDate()).stream().map(job -> job.id()).toList();
+    assertThat(recommended).startsWith(higher.getFirst(), priority.getFirst());
+    assertThat(service.secondary()).startsWith(higher.getFirst(), priority.getFirst());
+    var selected = service.selectToday();
+
+    assertThat(selected).hasSize(5);
+    assertThat(selected.subList(0, 2)).containsExactly(higher.getFirst(), priority.getFirst());
+    assertThat(selected.subList(2, 5)).containsExactlyInAnyOrderElementsOf(regular);
   }
 
   @Test

@@ -89,6 +89,12 @@ public final class TechnologyMatcher {
     if (before.matches(".*\\b(nao|not|never|no)\\b(?:\\s+[\\p{L}]+){0,5}\\s*$")
         || after.matches("^\\s+(?:nao|is not|not|isn't)\\b.*")) return MentionKind.negated;
     if (field == Field.title) return MentionKind.usage;
+    if (before.matches(
+            ".*\\b(?:equipe|(?:o |nosso )time|team)\\b.{0,45}\\b(?:usa|utiliza|trabalha com|uses|works with)\\s*$")
+        && !normalized.matches(
+            ".*\\b(?:obrigator[a-z]*|exigid[a-z]*|required|diferencial|preferid[a-z]*)\\b.*")) {
+      return MentionKind.usage;
+    }
     String context = section + " " + normalized;
     if (context.matches(
         ".*\\b(diferencial|diferenciais|desejavel|preferred|optional|nice to have)\\b.*"))

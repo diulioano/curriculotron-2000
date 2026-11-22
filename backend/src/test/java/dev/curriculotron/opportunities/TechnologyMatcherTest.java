@@ -11,6 +11,15 @@ class TechnologyMatcherTest {
   private final TechnologyMatcher matcher = new TechnologyMatcher();
 
   @Test
+  void distinguishesTeamUsageAfterARequirement() {
+    var result =
+        matcher.match(
+            List.of(source("Requisitos: Java. A equipe de produto usa Angular no frontend.")),
+            List.of("Angular"));
+    assertThat(result.evidence().getFirst().mentionKind().name()).isEqualTo("usage");
+  }
+
+  @Test
   void shouldRecognizeRequirementsFromStructuredLeverPayload() throws Exception {
     var http = org.mockito.Mockito.mock(dev.curriculotron.sources.PublicSourceHttp.class);
     var source = new dev.curriculotron.sources.AtsBoardSource("lever", "example", http);

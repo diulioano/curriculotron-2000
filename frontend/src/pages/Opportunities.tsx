@@ -13,6 +13,7 @@ import { Empty, MutationFeedback, PageHeader, QueryState } from '../components/P
 import { OpportunityCard } from '../components/OpportunityCard';
 
 const LISTS = [
+  ['recommended', 'Para seu perfil'],
   ['selection', 'Seleção do dia'],
   ['secondary', 'Lista secundária'],
   ['discarded', 'Descartadas'],
@@ -87,7 +88,10 @@ export function Opportunities() {
           {search.isPending ? 'Solicitando…' : 'Buscar vagas ↗'}
         </button>
       </PageHeader>
-      <p className="muted">Até 10 novas escolhas por dia. As demais ficam na lista secundária.</p>
+      <p className="muted">
+        Até 10 novas escolhas por dia. As demais ficam na lista secundária. A ordem segue a
+        aderência ao trabalho e às tecnologias do seu perfil; empresa prioritária só desempata.
+      </p>
       <div className="note-card stack">
         <p>
           Buscar publicações dos últimos 30 dias, ou escolher outro período. Vagas sem data ficam

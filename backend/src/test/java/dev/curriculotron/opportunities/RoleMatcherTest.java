@@ -9,6 +9,36 @@ import org.junit.jupiter.api.Test;
 
 class RoleMatcherTest {
   @Test
+  void exactBackendTargetTakesPrecedenceOverPartialFullStackMatch() {
+    var vacancy =
+        new VacancyEvidence(
+            "a",
+            "o",
+            null,
+            "fixture",
+            "Backend Developer",
+            null,
+            "Requirements: Java",
+            VacancyEvidence.Completeness.complete,
+            null,
+            1,
+            null,
+            null);
+    var evaluator = new dev.curriculotron.opportunities.domain.CompatibilityEvaluator();
+    var onlyFullStack =
+        evaluator.evaluate(
+            List.of(vacancy), List.of("Full Stack Developer"), List.of("Java"), "Java");
+    assertThat(onlyFullStack.role().reasons()).containsExactly("role_partial_specialty");
+    var alsoBackend =
+        evaluator.evaluate(
+            List.of(vacancy),
+            List.of("Full Stack Developer", "Backend Developer"),
+            List.of("Java"),
+            "Java");
+    assertThat(alsoBackend.role().reasons()).containsExactly("role_match");
+  }
+
+  @Test
   void shouldMatchLiteralUncataloguedRoleAndIgnoreOtherTeamSpecialization() {
     var matcher = new RoleMatcher();
     var literal =

@@ -5,12 +5,18 @@ import dev.curriculotron.opportunities.application.port.out.OpportunityCorrectio
 import dev.curriculotron.opportunities.application.port.out.OpportunityRepository;
 import dev.curriculotron.opportunities.domain.CorrectableOpportunityField;
 import dev.curriculotron.opportunities.domain.Opportunity;
+import dev.curriculotron.opportunities.domain.RuleBasedRanker;
 import dev.curriculotron.opportunities.domain.VacancyEvidence;
+import dev.curriculotron.profile.application.port.out.CareerProfileRepository;
+import dev.curriculotron.profile.domain.CareerProfile;
+import dev.curriculotron.profile.domain.Seniority;
 import dev.curriculotron.sources.ConfiguredSourceRepository;
 import dev.curriculotron.sources.SearchCriteriaRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,9 +30,20 @@ public class AssessmentInputService {
       List<VacancyEvidence> evidence,
       long evidenceRevision,
       SearchCriteriaRepository.Settings settings,
-      String juniorJustification) {
+      String juniorJustification,
+      RuleBasedRanker.Profile profile) {
     public Input {
       evidence = List.copyOf(evidence);
+    }
+
+    /** Sem perfil de carreira salvo. */
+    public Input(
+        Opportunity job,
+        List<VacancyEvidence> evidence,
+        long evidenceRevision,
+        SearchCriteriaRepository.Settings settings,
+        String juniorJustification) {
+      this(job, evidence, evidenceRevision, settings, juniorJustification, null);
     }
   }
 
@@ -35,18 +52,21 @@ public class AssessmentInputService {
   private final OpportunityCorrectionRepository corrections;
   private final SearchCriteriaRepository criteria;
   private final ConfiguredSourceRepository boards;
+  private final CareerProfileRepository profiles;
 
   public AssessmentInputService(
       OpportunityRepository jobs,
       EvidenceRepository evidence,
       OpportunityCorrectionRepository corrections,
       SearchCriteriaRepository criteria,
-      ConfiguredSourceRepository boards) {
+      ConfiguredSourceRepository boards,
+      CareerProfileRepository profiles) {
     this.jobs = jobs;
     this.evidence = evidence;
     this.corrections = corrections;
     this.criteria = criteria;
     this.boards = boards;
+    this.profiles = profiles;
   }
 
   @Transactional(readOnly = true)
@@ -60,8 +80,19 @@ public class AssessmentInputService {
               withTitleCorrection(job, evidence.forOpportunity(id)),
               evidence.revision(id),
               criteria.current(),
-              junior);
+              junior,
+              profiles.current().map(stored -> rankingProfile(stored.profile())).orElse(null));
         });
+  }
+
+  static RuleBasedRanker.Profile rankingProfile(CareerProfile profile) {
+    return new RuleBasedRanker.Profile(
+        profile.primaryTechnology(),
+        Set.copyOf(profile.secondaryTechnologies()),
+        profile.currentSeniority().name(),
+        profile.targetLevels().stream().map(Seniority::name).collect(Collectors.toSet()),
+        profile.juniorFloorCltMonthlyBrl(),
+        profile.juniorFloorPjMonthlyBrl());
   }
 
   /**

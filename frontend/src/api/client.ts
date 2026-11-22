@@ -50,8 +50,9 @@ export interface RequestOptions {
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const method = options.method ?? 'GET';
+  const isFormData = options.body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (options.body !== undefined) {
+  if (options.body !== undefined && !isFormData) {
     headers['Content-Type'] = 'application/json';
   }
   if (MUTATIONS.has(method) && csrfToken) {
@@ -65,7 +66,12 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     method,
     headers,
     credentials: 'same-origin',
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body:
+      options.body === undefined
+        ? undefined
+        : isFormData
+          ? (options.body as FormData)
+          : JSON.stringify(options.body),
     signal: options.signal,
   });
 

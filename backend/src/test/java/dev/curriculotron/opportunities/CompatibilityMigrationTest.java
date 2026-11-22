@@ -20,10 +20,13 @@ class CompatibilityMigrationTest {
         var sql = connection.createStatement()) {
       try (var rows =
           sql.executeQuery(
-              "select state, target_criteria_version from compatibility_refresh where id=1")) {
+              "select state, target_criteria_version, evaluator_version from compatibility_refresh where id=1")) {
         assertThat(rows.next()).isTrue();
         assertThat(rows.getString(1)).isEqualTo("pending");
         assertThat(rows.getInt(2)).isEqualTo(1);
+        assertThat(rows.getInt(3))
+            .isEqualTo(
+                dev.curriculotron.opportunities.domain.CompatibilityAssessment.EVALUATOR_VERSION);
       }
     }
   }
@@ -65,6 +68,30 @@ class CompatibilityMigrationTest {
               sql.executeUpdate(
                   "update opportunity_evidence set description_completeness='invented'"))
           .isInstanceOf(java.sql.SQLException.class);
+    }
+  }
+
+  @Test
+  void replacesReadyLegacyEvaluatorWithPendingCurrentEvaluator() throws Exception {
+    String url = "jdbc:sqlite:" + temporary.resolve("v16.db");
+    migrate(url, "16");
+    try (var connection = DriverManager.getConnection(url);
+        var sql = connection.createStatement()) {
+      sql.executeUpdate(
+          "UPDATE compatibility_refresh SET evaluator_version=1, state='ready', assessed_count=3");
+    }
+    migrate(url, null);
+    try (var connection = DriverManager.getConnection(url);
+        var sql = connection.createStatement();
+        var result =
+            sql.executeQuery(
+                "SELECT state,evaluator_version,assessed_count FROM compatibility_refresh WHERE id=1")) {
+      assertThat(result.next()).isTrue();
+      assertThat(result.getString(1)).isEqualTo("pending");
+      assertThat(result.getInt(2))
+          .isEqualTo(
+              dev.curriculotron.opportunities.domain.CompatibilityAssessment.EVALUATOR_VERSION);
+      assertThat(result.getInt(3)).isZero();
     }
   }
 

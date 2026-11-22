@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
 import {
   post,
@@ -11,7 +11,11 @@ import {
 import {
   useCompatibilityRefresh,
   useCoordinatedOpportunityDetailQuery,
+  PROFILE_KEY,
 } from '../api/useCompatibilityRefresh';
+import { getProfile } from '../api/profile';
+import { JuniorException } from '../components/JuniorException';
+import { PreparationPanel } from '../components/PreparationPanel';
 import { CompatibilityEvidence } from '../components/CompatibilityEvidence';
 import { Deadline } from '../components/Deadline';
 import {
@@ -49,6 +53,14 @@ export function OpportunityDetail() {
   const client = useQueryClient();
   const { invalidateAfterOpportunityChange } = useCompatibilityRefresh();
   const query = useCoordinatedOpportunityDetailQuery(id);
+  const profile = useQuery({
+    queryKey: PROFILE_KEY,
+    queryFn: ({ signal }) => getProfile(signal),
+    enabled:
+      query.data?.seniority.label === 'Júnior' ||
+      query.data?.juniorException?.status === 'qualified' ||
+      query.data?.juniorException?.status === 'excluded',
+  });
   const [correcting, setCorrecting] = useState(false);
   const [correctionSaved, setCorrectionSaved] = useState(false);
 
@@ -143,6 +155,18 @@ export function OpportunityDetail() {
               <Summary item={item} />
 
               <CompatibilityEvidence item={item} />
+
+              {profile.isError &&
+                (item.seniority.label === 'Júnior' ||
+                  item.juniorException?.status === 'qualified' ||
+                  item.juniorException?.status === 'excluded') && (
+                  <p role="alert">
+                    Não foi possível carregar o perfil para avaliar a exceção Júnior.
+                  </p>
+                )}
+              {profile.data?.profile && (
+                <JuniorException item={item} profile={profile.data.profile} />
+              )}
 
               {item.fitReasons.length > 0 && Boolean(item.compatibility?.current) && (
                 <section className="why sk" aria-labelledby="por-que">
@@ -339,12 +363,7 @@ export function OpportunityDetail() {
 
               <section className="prepare-section" aria-labelledby="preparar">
                 <h2 id="preparar">Preparar</h2>
-                <SurfaceStateBlock
-                  kind="empty"
-                  title="Simulador de entrevista em construção"
-                  body="Esta área reunirá preparação orientada aos requisitos declarados e lacunas desta vaga."
-                  action={{ label: 'Ver critérios do perfil →', to: '/criterios' }}
-                />
+                <PreparationPanel preparation={item.preparation} />
               </section>
             </aside>
           </div>

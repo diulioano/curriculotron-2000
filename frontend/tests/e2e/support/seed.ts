@@ -268,7 +268,7 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
               : ['role_unknown', 'technology_unknown'],
         };
         const compCriteriaVersion = comp.criteriaVersion ?? criteriaVersion;
-        const compEvaluatorVersion = comp.evaluatorVersion ?? 1;
+        const compEvaluatorVersion = comp.evaluatorVersion ?? 2;
         const compEvidenceRevision = comp.evidenceRevision ?? evidenceRevision;
         const snapshotRoles = comp.criteriaRoles ?? targetRoles;
         const snapshotStack =
@@ -338,7 +338,7 @@ export function seedOpportunities(jobs: SeedJob[], options: SeedOptions = {}) {
     db.prepare(
       `UPDATE compatibility_refresh
        SET target_criteria_version = ?,
-           evaluator_version = 1,
+           evaluator_version = 2,
            run_id = NULL,
            state = ?,
            started_at = NULL,

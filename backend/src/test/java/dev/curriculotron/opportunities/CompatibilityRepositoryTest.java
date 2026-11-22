@@ -71,7 +71,7 @@ class CompatibilityRepositoryTest extends AppTestBase {
         new CompatibilityAssessment(
             id,
             1,
-            1,
+            CompatibilityAssessment.EVALUATOR_VERSION,
             revision,
             Instant.EPOCH,
             Axis.matched,
@@ -84,15 +84,17 @@ class CompatibilityRepositoryTest extends AppTestBase {
             List.of("Java"));
     assertThat(writer.write(() -> assessments.saveIfCurrent(value))).isTrue();
     assertThat(assessments.find(id)).contains(value);
-    assertThat(assessments.pending(1, 1, "", 100)).doesNotContain(id);
+    assertThat(assessments.pending(1, CompatibilityAssessment.EVALUATOR_VERSION, "", 100))
+        .doesNotContain(id);
     writer.run(() -> evidence.invalidate(id));
     assertThat(writer.write(() -> assessments.saveIfCurrent(value))).isFalse();
-    assertThat(assessments.pending(1, 1, "", 100)).contains(id);
+    assertThat(assessments.pending(1, CompatibilityAssessment.EVALUATOR_VERSION, "", 100))
+        .contains(id);
     var wrongCriteria =
         new CompatibilityAssessment(
             id,
             2,
-            1,
+            CompatibilityAssessment.EVALUATOR_VERSION,
             evidence.revision(id),
             Instant.EPOCH,
             Axis.matched,

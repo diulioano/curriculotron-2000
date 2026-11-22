@@ -63,7 +63,7 @@ class SearchIngestionTest extends AppTestBase {
               """
               UPDATE compatibility_refresh
               SET target_criteria_version = 1,
-                  evaluator_version = 1,
+                  evaluator_version = 2,
                   run_id = NULL,
                   state = 'ready',
                   started_at = NULL,

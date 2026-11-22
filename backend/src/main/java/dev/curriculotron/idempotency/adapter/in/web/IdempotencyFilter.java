@@ -47,7 +47,8 @@ public class IdempotencyFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     String key = request.getHeader(HEADER);
-    return key == null
+    return "/api/profile/import/preview".equals(request.getRequestURI())
+        || key == null
         || key.isBlank()
         || !MUTATIONS.contains(request.getMethod())
         || !request.getRequestURI().startsWith("/api/");

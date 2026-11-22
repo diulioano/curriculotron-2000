@@ -10,6 +10,9 @@ import {
   type RefreshStatus,
 } from './compatibility';
 import { panel } from './panel';
+import { saveProfile, type ProfileView, type SavePayload } from './profile';
+
+export const PROFILE_KEY = ['profile'] as const;
 
 export const COMPATIBILITY_QUERY_KEYS = [
   ['criteria'],
@@ -338,4 +341,30 @@ export function useCompatibilityRefresh() {
     consultLatestStatus,
     invalidateAfterOpportunityChange,
   };
+}
+
+/**
+ * Salvar o perfil muda cargo e tecnologias dos critérios e sobe a versão deles (api.md US006),
+ * então segue a mesma coordenação de leituras de `useSaveCriteriaMutation`.
+ */
+export function useSaveProfileMutation(callbacks?: {
+  onSuccess?: (saved: ProfileView) => void;
+  onError?: (error: Error) => void;
+}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SavePayload) => runTrackedMutation(client, () => saveProfile(payload)),
+    onSuccess: async (saved) => {
+      advanceCompatibilityGeneration(client, saved.assessment.criteriaVersion);
+      await cancelCompatibilityQueries(client);
+      client.setQueryData(PROFILE_KEY, saved);
+      client.setQueryData(['compatibility-status'], saved.assessment);
+      await invalidateCompatibilityQueries(client);
+      callbacks?.onSuccess?.(saved);
+    },
+    onError: (error) => {
+      advanceCompatibilityGeneration(client);
+      callbacks?.onError?.(error);
+    },
+  });
 }

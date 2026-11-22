@@ -44,6 +44,8 @@ dependencies {
 	implementation("com.networknt:json-schema-validator:3.0.9")
 	// Argon2id do Spring Security crypto depende do Bouncy Castle
 	implementation("org.bouncycastle:bcprov-jdk18on:1.87")
+	// Extração de texto de currículos em PDF (US006)
+	implementation("org.apache.pdfbox:pdfbox:3.0.8")
 
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-security-test")

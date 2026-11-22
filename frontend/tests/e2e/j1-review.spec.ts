@@ -249,7 +249,7 @@ test('J1: secundária guarda as demais; entrada manual não vira candidatura', a
     .getByLabel('Descrição da vaga')
     .fill('Desenvolvedor Java Sênior na SAP\nHíbrido em São Leopoldo');
   await page.getByRole('button', { name: 'Adicionar à lista' }).click();
-  await expect(page.getByRole('status')).toContainText('Vaga adicionada');
+  await expect(page.getByRole('status').filter({ hasText: 'Vaga adicionada' })).toBeVisible();
   const manual = page.getByRole('link', { name: 'Desenvolvedor Java Sênior na SAP' });
   await expect(manual).toBeVisible();
   await manual.click();
